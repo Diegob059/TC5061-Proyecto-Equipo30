@@ -49,10 +49,19 @@ test:
 
 ## Set up Python interpreter environment
 .PHONY: create_environment
+ifeq ($(OS),Windows_NT)
 create_environment:
-	@bash -c "if [ ! -z `which virtualenvwrapper.sh` ]; then source `which virtualenvwrapper.sh`; mkvirtualenv $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER); else mkvirtualenv.bat $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER); fi"
-	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
-	
+	py -$(PYTHON_VERSION) -m venv .venv
+	@echo ">>> New virtualenv created in .venv/. Activate with:"
+	@echo "    .venv\\Scripts\\Activate.ps1   (PowerShell)"
+	@echo "    .venv\\Scripts\\activate.bat   (cmd.exe)"
+else
+create_environment:
+	$(PYTHON_INTERPRETER)$(PYTHON_VERSION) -m venv .venv
+	@echo ">>> New virtualenv created in .venv/. Activate with:"
+	@echo "    source .venv/bin/activate"
+endif
+
 
 
 
@@ -64,7 +73,17 @@ create_environment:
 ## Make dataset
 .PHONY: data
 data: requirements
-	$(PYTHON_INTERPRETER) MiBici/dataset.py
+	$(PYTHON_INTERPRETER) MiBici/clasificacion_dataset.py
+
+## Make station features
+.PHONY: features
+features: data
+	$(PYTHON_INTERPRETER) MiBici/clasificacion_features.py
+
+## Train clustering models with MLflow-tracked experiment sweep
+.PHONY: train
+train: features
+	$(PYTHON_INTERPRETER) MiBici/modeling/clasificacion_train.py
 
 
 #################################################################################
