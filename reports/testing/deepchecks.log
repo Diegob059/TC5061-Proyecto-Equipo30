@@ -1,12 +1,17 @@
-2026-11-02 03:38:56.183 | INFO     | src.config:<module>:21 - PROJ_ROOT path is: /Users/gescobed_mac/Documents/Operaciones de aprendizaje automático/TC5061-Proyecto-Equipo30-testing
+2026-11-02 03:57:13.733 | INFO     | src.config:<module>:21 - PROJ_ROOT path is: /Users/gescobed_mac/Documents/Operaciones de aprendizaje automático/TC5061-Proyecto-Equipo30-testing
 /private/tmp/equipo30-revision-env/lib/python3.12/site-packages/deepchecks/core/serialization/dataframe/html.py:16: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   from pkg_resources import parse_version
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Users/runner/work/crossbow/crossbow/arrow/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
 Dataset real: p2_mibici_features_target.parquet
 Train: 7500 filas | Test: 7500 filas | Features: 17
 Data Integrity Suite:
 |            | 0/12 [Time: 00:00]Data Integrity Suite:
 |█████       | 5/12 [Time: 00:00, Check=String Mismatch]Data Integrity Suite:
-|██████████  | 10/12 [Time: 00:03, Check=Feature Label Correlation]                                                                                         Train Test Validation Suite:
+|█████████   | 9/12 [Time: 00:03, Check=Outlier Sample Detection]Data Integrity Suite:
+|███████████ | 11/12 [Time: 00:04, Check=Feature Feature Correlation]                                                                                           Train Test Validation Suite:
 |            | 0/12 [Time: 00:00]/private/tmp/equipo30-revision-env/lib/python3.12/site-packages/deepchecks/tabular/checks/train_test_validation/train_test_samples_mix.py:85: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
   duplicates_df = duplicates_df.applymap(lambda x: None if x == NAN_REPLACEMENT else x)
 Train Test Validation Suite:
@@ -27,6 +32,6 @@ Train: 7500 filas | Test: 7500 filas | Features: 17
 /Users/gescobed_mac/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/multiprocessing/queues.py:122: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   return _ForkingPickler.loads(res)
 Train Test Validation Suite:
-|████████████| 12/12 [Time: 00:02, Check=Multivariate Drift]                                                                                            data_integrity: PASS | checks=12 | no ejecutados=0
+|████████████| 12/12 [Time: 00:03, Check=Multivariate Drift]                                                                                            data_integrity: PASS | checks=12 | no ejecutados=0
 train_test_drift: PASS | checks=12 | no ejecutados=0
 Informes guardados en /Users/gescobed_mac/Documents/Operaciones de aprendizaje automático/TC5061-Proyecto-Equipo30-testing/reports; all_passed=True

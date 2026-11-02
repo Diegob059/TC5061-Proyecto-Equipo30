@@ -389,7 +389,7 @@ En esta verificación se reconstruyeron **7,196,640 filas** desde los **21 CSV m
 
 `Outlier Sample Detection` genera un diagnóstico descriptivo en la suite estándar; no tiene condición de aprobación. El resto de comprobaciones con condiciones aprobó. Estas conclusiones corresponden a la muestra y los umbrales del informe, no garantizan ausencia de problemas en todas las filas o en datos futuros.
 
-Las pruebas automatizadas comprueban la aprobación real de las suites, incluidos los errores de ejecución. Además introducen duplicados y drift deliberadamente para comprobar que los detectan. El CLI guarda los informes y devuelve **0** si las suites aprueban, **1** si hay condiciones incumplidas o chequeos sin ejecutar, y **2** si los datos o argumentos no son válidos. No imprime éxito cuando hay hallazgos.
+Las pruebas automatizadas comprueban la aprobación real de las suites, incluidos los errores de ejecución. Además introducen duplicados y drift deliberadamente para comprobar que los detectan. Los HTML se exportan sin widgets, evitando depender de un archivo `anywidget.js` externo. El CLI guarda los informes y devuelve **0** si las suites aprueban, **1** si hay condiciones incumplidas o chequeos sin ejecutar, y **2** si los datos o argumentos no son válidos. No imprime éxito cuando hay hallazgos.
 
 Evidencia de la misma ejecución:
 
@@ -397,6 +397,8 @@ Evidencia de la misma ejecución:
 - [Reporte Train/Test](reports/deepchecks_data_drift.html).
 - [Resumen con condiciones, versiones y SHA-256](reports/deepchecks_summary.json).
 - [Log íntegro](reports/testing/deepchecks.log) y [visor estático](reports/testing/deepchecks.html).
+
+Capturas directas de los HTML exportados: [integridad](reports/figures/semana7_deepchecks_html.png) y [Train/Test](reports/figures/semana7_deepchecks_drift_html.png).
 
 ![Captura del visor de DeepChecks sobre datos reales](reports/figures/semana7_deepchecks_evidence.png)
 

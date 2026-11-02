@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-02T02:39:05.569694+00:00",
+  "timestamp": "2026-11-02T02:57:25.302352+00:00",
   "dataset": "p2_mibici_features_target.parquet",
   "dataset_sha256": "ec233a6298aedeaa6f79b6cbddae846393b56d74327ee673b708aa5f6d276bd4",
   "data_source": "real_parquet",
@@ -46,7 +46,7 @@
     "setuptools": "80.10.2"
   },
   "python_version": "3.12.14",
-  "elapsed_seconds": 7.51,
+  "elapsed_seconds": 9.62,
   "suites": {
     "data_integrity": {
       "suite_name": "data_integrity",

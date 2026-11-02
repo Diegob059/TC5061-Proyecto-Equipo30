@@ -94,4 +94,4 @@ tests/test_data_deepchecks.py::test_integrity_suite_detects_duplicate_rows
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 - generated xml file: /Users/gescobed_mac/Documents/Operaciones de aprendizaje automático/TC5061-Proyecto-Equipo30-testing/reports/testing/pytest.xml -
-======================= 54 passed, 15 warnings in 11.54s =======================
+======================= 54 passed, 15 warnings in 13.10s =======================
