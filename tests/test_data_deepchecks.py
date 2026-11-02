@@ -200,5 +200,8 @@ def test_html_report_replaces_requested_path_without_numbered_copies(samples, tm
     destination.write_text("previous report")
     result = run_data_integrity_suite(train, features, destination)
     assert result["all_passed"], result
-    assert "previous report" not in destination.read_text()
+    html = destination.read_text()
+    assert "previous report" not in html
+    assert "Data Integrity Suite" in html
+    assert "anywidget.js" not in html
     assert list(tmp_path.glob("*.html")) == [destination]

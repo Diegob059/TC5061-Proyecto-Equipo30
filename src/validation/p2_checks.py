@@ -70,7 +70,7 @@ def summarize_suite(result, suite_name: str, output_html: Path | None = None) ->
     if output_html is not None:
         output_html.parent.mkdir(parents=True, exist_ok=True)
         with output_html.open("w", encoding="utf-8") as stream:
-            result.save_as_html(stream)
+            result.save_as_html(stream, as_widget=False)
     passed = [check.check.name() for check in result.get_passed_checks()]
     failed = [check.check.name() for check in result.get_not_passed_checks()]
     not_run = [
