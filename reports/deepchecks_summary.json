@@ -1,15 +1,57 @@
 {
-  "timestamp": "2026-11-01T14:44:45Z",
+  "timestamp": "2026-11-02T02:57:25.302352+00:00",
   "dataset": "p2_mibici_features_target.parquet",
+  "dataset_sha256": "ec233a6298aedeaa6f79b6cbddae846393b56d74327ee673b708aa5f6d276bd4",
+  "data_source": "real_parquet",
+  "random_seed": 42,
   "train_samples": 7500,
   "test_samples": 7500,
-  "features_evaluated": 22,
-  "elapsed_seconds": 7.0,
+  "features_evaluated": 17,
+  "feature_columns": [
+    "capacity",
+    "latitude",
+    "longitude",
+    "salidas_lag_1",
+    "llegadas_lag_1",
+    "salidas_lag_2",
+    "llegadas_lag_2",
+    "salidas_lag_24",
+    "llegadas_lag_24",
+    "salidas_lag_168",
+    "llegadas_lag_168",
+    "balance_rolling_3h",
+    "balance_rolling_12h",
+    "sin_hour",
+    "cos_hour",
+    "sin_dow",
+    "cos_dow"
+  ],
+  "preparation": {
+    "function": "src.features.p2_features.get_train_test_data",
+    "train_timestamp_strictly_before": "2025-12-31 22:00:00",
+    "test_timestamp_from": "2026-01-01 00:00:00",
+    "valid_targets": [
+      0,
+      1,
+      2
+    ],
+    "datetime_metadata": "timestamp",
+    "index_metadata": "station_id|timestamp"
+  },
+  "versions": {
+    "deepchecks": "0.19.1",
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.7.2",
+    "setuptools": "80.10.2"
+  },
+  "python_version": "3.12.14",
+  "elapsed_seconds": 9.62,
   "suites": {
     "data_integrity": {
       "suite_name": "data_integrity",
       "total_checks": 12,
-      "passed_checks_count": 8,
+      "passed_checks_count": 11,
       "passed_checks": [
         "Is Single Value",
         "Special Characters",
@@ -18,34 +60,187 @@
         "String Mismatch",
         "Data Duplicates",
         "String Length Out Of Bounds",
-        "Conflicting Labels"
-      ],
-      "not_passed_checks": [
+        "Conflicting Labels",
         "Feature Label Correlation",
-        "Feature Feature Correlation"
+        "Feature Feature Correlation",
+        "Identifier Label Correlation"
       ],
-      "all_passed": false,
-      "report_path": "reports/deepchecks_data_integrity.html"
+      "not_passed_checks": [],
+      "not_run_checks": [],
+      "conditions": [
+        {
+          "check": "Is Single Value",
+          "condition": "Does not contain only a single value",
+          "status": "PASS",
+          "details": "Passed for 20 relevant columns"
+        },
+        {
+          "check": "Special Characters",
+          "condition": "Ratio of samples containing solely special character is less or equal to 0.1%",
+          "status": "PASS",
+          "details": "Passed for 20 relevant columns"
+        },
+        {
+          "check": "Mixed Nulls",
+          "condition": "Number of different null types is less or equal to 1",
+          "status": "PASS",
+          "details": "Passed for 20 relevant columns"
+        },
+        {
+          "check": "Mixed Data Types",
+          "condition": "Rare data types in column are either more than 10% or less than 1% of the data",
+          "status": "PASS",
+          "details": "20 columns passed: found 0 columns with negligible types mix, and 20 columns without any types mix"
+        },
+        {
+          "check": "String Mismatch",
+          "condition": "No string variants",
+          "status": "PASS",
+          "details": "Passed for 1 relevant column"
+        },
+        {
+          "check": "Data Duplicates",
+          "condition": "Duplicate data ratio is less or equal to 5%",
+          "status": "PASS",
+          "details": "Found 0% duplicate data"
+        },
+        {
+          "check": "String Length Out Of Bounds",
+          "condition": "Ratio of string length outliers is less or equal to 0%",
+          "status": "PASS",
+          "details": "Passed for 1 relevant column"
+        },
+        {
+          "check": "Conflicting Labels",
+          "condition": "Ambiguous sample ratio is less or equal to 0%",
+          "status": "PASS",
+          "details": "Ratio of samples with conflicting labels: 0%"
+        },
+        {
+          "check": "Feature Label Correlation",
+          "condition": "Features' Predictive Power Score is less than 0.8",
+          "status": "PASS",
+          "details": "Passed for 17 relevant columns"
+        },
+        {
+          "check": "Feature Feature Correlation",
+          "condition": "Not more than 0 pairs are correlated above 0.9",
+          "status": "PASS",
+          "details": "All correlations are less than 0.9 except pairs []"
+        },
+        {
+          "check": "Identifier Label Correlation",
+          "condition": "Identifier columns PPS is less or equal to 0",
+          "status": "PASS",
+          "details": "Passed for 2 relevant columns"
+        }
+      ],
+      "all_passed": true,
+      "report_path": "deepchecks_data_integrity.html"
     },
     "train_test_drift": {
       "suite_name": "train_test_validation",
       "total_checks": 12,
-      "passed_checks_count": 7,
+      "passed_checks_count": 12,
       "passed_checks": [
         "Datasets Size Comparison",
+        "New Label Train Test",
         "New Category Train Test",
         "String Mismatch Comparison",
+        "Date Train Test Leakage Duplicates",
+        "Date Train Test Leakage Overlap",
+        "Index Train Test Leakage",
         "Train Test Samples Mix",
+        "Feature Label Correlation Change",
         "Feature Drift",
         "Label Drift",
         "Multivariate Drift"
       ],
-      "not_passed_checks": [
-        "New Label Train Test",
-        "Feature Label Correlation Change"
+      "not_passed_checks": [],
+      "not_run_checks": [],
+      "conditions": [
+        {
+          "check": "Datasets Size Comparison",
+          "condition": "Test-Train size ratio is greater than 0.01",
+          "status": "PASS",
+          "details": "Test-Train size ratio is 1"
+        },
+        {
+          "check": "New Label Train Test",
+          "condition": "Number of new label values is less or equal to 0",
+          "status": "PASS",
+          "details": "Found 0 new labels in test data: []"
+        },
+        {
+          "check": "New Category Train Test",
+          "condition": "Ratio of samples with a new category is less or equal to 0%",
+          "status": "PASS",
+          "details": "No relevant features to check were found"
+        },
+        {
+          "check": "String Mismatch Comparison",
+          "condition": "No new variants allowed in test data",
+          "status": "PASS",
+          "details": "Passed for 1 relevant column"
+        },
+        {
+          "check": "Date Train Test Leakage Duplicates",
+          "condition": "Date leakage ratio is less or equal to 0%",
+          "status": "PASS",
+          "details": "No leaked dates found"
+        },
+        {
+          "check": "Date Train Test Leakage Overlap",
+          "condition": "Date leakage ratio is less or equal to 0%",
+          "status": "PASS",
+          "details": "No leaked dates found"
+        },
+        {
+          "check": "Index Train Test Leakage",
+          "condition": "Ratio of leaking indices is less or equal to 0%",
+          "status": "PASS",
+          "details": "No index leakage found"
+        },
+        {
+          "check": "Train Test Samples Mix",
+          "condition": "Percentage of test data samples that appear in train data is less or equal to 5%",
+          "status": "PASS",
+          "details": "Percent of test data samples that appear in train data: 1.44%"
+        },
+        {
+          "check": "Feature Label Correlation Change",
+          "condition": "Train-Test features' Predictive Power Score difference is less than 0.2",
+          "status": "PASS",
+          "details": "Passed for 17 relevant columns"
+        },
+        {
+          "check": "Feature Label Correlation Change",
+          "condition": "Train features' Predictive Power Score is less than 0.7",
+          "status": "PASS",
+          "details": "Passed for 17 relevant columns"
+        },
+        {
+          "check": "Feature Drift",
+          "condition": "categorical drift score < 0.2 and numerical drift score < 0.2",
+          "status": "PASS",
+          "details": "Passed for 17 columns out of 17 columns.\nFound column \"balance_rolling_12h\" has the highest numerical drift score: 0.03"
+        },
+        {
+          "check": "Label Drift",
+          "condition": "Label drift score < 0.15",
+          "status": "PASS",
+          "details": "Label's drift score Cramer's V is 0.02"
+        },
+        {
+          "check": "Multivariate Drift",
+          "condition": "Drift value is less than 0.25",
+          "status": "PASS",
+          "details": "Found drift value of: 0.08, corresponding to a domain classifier AUC of: 0.54"
+        }
       ],
-      "all_passed": false,
-      "report_path": "reports/deepchecks_data_drift.html"
+      "all_passed": true,
+      "report_path": "deepchecks_data_drift.html"
     }
-  }
+  },
+  "all_passed": true
 }

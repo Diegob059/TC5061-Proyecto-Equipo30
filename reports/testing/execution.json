@@ -1,0 +1,89 @@
+{
+  "started_at": "2026-11-02T03:39:06.455842+01:00",
+  "branch": "corregir-deepchecks-semana7",
+  "base_commit": "a148bf0ad330fb84aa3798a0cf9fbddbc049b48a",
+  "commands": {
+    "pip-audit": {
+      "command": [
+        "python",
+        "-m",
+        "pip_audit",
+        "--format",
+        "json",
+        "--output",
+        "reports/testing/pip-audit.json",
+        "--cache-dir",
+        "/private/tmp/equipo30-audit-cache"
+      ],
+      "started_at": "2026-11-02T03:39:06.455842+01:00",
+      "finished_at": "2026-11-02T03:39:11.656481+01:00",
+      "exit_code": 1,
+      "log": "pip-audit.log",
+      "log_sha256": "5dbd29da1ffacc07acb2a46fa5494ae1e9779bc38483def76c3fc2081b896b49",
+      "reuse_note": "Auditoría previa del mismo entorno de revisión; la corrección posterior solo cambia la exportación HTML, sin modificar dependencias."
+    },
+    "pytest": {
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "tests",
+        "-v",
+        "--tb=short",
+        "-o",
+        "junit_family=xunit1",
+        "--junitxml=reports/testing/pytest.xml"
+      ],
+      "started_at": "2026-11-02T03:56:58.811579+01:00",
+      "finished_at": "2026-11-02T03:57:13.130935+01:00",
+      "exit_code": 0,
+      "log": "pytest.log",
+      "log_sha256": "7543c829ec53fd409f510ae2eac07732e6ba3c3ccc6f0ac517239a2b873859ce"
+    },
+    "deepchecks": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.run_deepchecks",
+        "--sample-size",
+        "15000"
+      ],
+      "started_at": "2026-11-02T03:57:13.131294+01:00",
+      "finished_at": "2026-11-02T03:57:25.906788+01:00",
+      "exit_code": 0,
+      "log": "deepchecks.log",
+      "log_sha256": "c277077d22cbea2954b9bf91f7edbe5040dd2a416dfd0aa1c5319665aad0076d"
+    },
+    "bandit": {
+      "command": [
+        "python",
+        "-m",
+        "bandit",
+        "-r",
+        "src",
+        "scripts",
+        "-f",
+        "json",
+        "-o",
+        "reports/testing/bandit.json"
+      ],
+      "started_at": "2026-11-02T03:57:25.907223+01:00",
+      "finished_at": "2026-11-02T03:57:26.261418+01:00",
+      "exit_code": 1,
+      "log": "bandit.log",
+      "log_sha256": "44f2fe17c3b3ff956c8dad3ce90b5e7e425a81111162a874375d6807525eca2a"
+    }
+  },
+  "source_sha256": {
+    "requirements.txt": "fc5f07d9e32d9c8ef55d28a51a23d6c6bf8a42d38e3ff373250b6cab19512cbc",
+    "python_env.yaml": "deb41c0da771180a0a092403042ce109dc38f3e98bca577f938f123f9ccf96dc",
+    "Makefile": "e1bde388698449a2b7c344a90be328d310167d33caf5eb81a652de64ad9b8f8f",
+    "scripts/run_deepchecks.py": "4a08a272f298647dfdd0f5ccef8a0d715f96707c9b51ffde11ebf1a2996c7ea9",
+    "src/validation/p2_checks.py": "f58a79905521af068620da6363a153c75ce33d3484291f582e8f37babc2dadb7",
+    "tests/test_data_deepchecks.py": "cf2533e2a183eed9cfdd7697c6fbaa48ed85aa8b23395e23690c906a9ca28e8c",
+    "tests/test_reproducibility.py": "bfc6b1b6acefc437371253e6e72b0de660e6973e0bceb5de6ef76809fd25abb4"
+  },
+  "finished_at": "2026-11-02T03:57:26.610953+01:00",
+  "source_commit": "a148bf0ad330fb84aa3798a0cf9fbddbc049b48a",
+  "branch_note": "Nombre actual de la rama de entrega, renombrada después de la ejecución. source_commit y source_sha256 identifican el código probado."
+}

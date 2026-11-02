@@ -332,123 +332,111 @@ Por diseño, el repositorio **no incluye** (ver `.gitignore`): los archivos de d
 
 ## 🛡️ 7. Pruebas Automatizadas, Validación de Datos y Seguridad (Semana 7)
 
-Para garantizar la calidad de los datos, la confiabilidad del código, la reproducibilidad de los modelos y las mejores prácticas de seguridad, el repositorio cuenta con una suite integral de pruebas y controles automatizados.
+La ejecución verificada del 2 de noviembre de 2026 corresponde al código del commit `a148bf0`. La rama de entrega es `corregir-deepchecks-semana7`. Los comandos, fechas, códigos de salida y hashes del código probado se conservan en [`reports/testing/execution.json`](reports/testing/execution.json); las versiones completas del entorno están en [`environment.txt`](reports/testing/environment.txt).
 
-```
-tests/
-├── test_data.py / test_dataset.py / test_features.py       <- Integridad de datos y feature engineering compartido
-├── test_p1_experiments.py                                  <- Pruebas del pipeline analítico de P1
-├── test_p2_data.py / test_p2_features.py / test_p2_train.py <- Ingesta, lags, feature store y modelado de P2
-├── test_p3_train.py / test_p3_register.py                  <- Búsqueda de clustering, validación y Model Registry de P3
-├── test_reproducibility.py                                 <- Reproducibilidad estricta de modelos con semillas fijas
-└── test_data_deepchecks.py                                 <- Integridad y drift temporal con DeepChecks en PyTest
-```
+### 7.1 Instalación y ejecución de PyTest
 
----
-
-### 7.1 Pruebas Unitarias y Reproducibilidad con PyTest (`make test`)
-
-El proyecto dispone de **43 pruebas automatizadas** que abarcan casos normales y límite a lo largo de todas las capas del pipeline. Se ejecutan con un solo comando:
+Se requiere Python 3.12 y, en macOS, la dependencia nativa de LightGBM descrita en la sección 4.
 
 ```bash
+make requirements
 make test
-# O directamente:
-pytest -v
+# Equivalente:
+python -m pytest tests -v
 ```
 
-#### Verificación de Reproducibilidad (`tests/test_reproducibility.py`)
-Para certificar que el entrenamiento sea 100% determinista y gobernable, se implementaron pruebas de consistencia numérica:
-1. `test_lightgbm_training_reproducibility`: Valida que dos instancias independientes de LightGBM entrenadas con idéntica semilla fija (`RANDOM_SEED=42`) generen predicciones, probabilidades y métricas estrictamente iguales.
-2. `test_p2_pipeline_reproducibility_on_real_data`: Ejecuta dos veces el pipeline real de clasificación de riesgo de P2 sobre datos de MiBici, comprobando que las métricas (`log_loss`, `accuracy`, `macro_f1`) y las predicciones no presenten variación numérica (`assert np.array_equal`).
-3. `test_p3_clustering_pipeline_reproducibility_on_real_data`: Ejecuta dos veces el pipeline real de clustering GMM de P3 sobre perfiles de estaciones, validando que las asignaciones de clusters, el Silhouette Score y el índice Davies-Bouldin coincidan bit a bit (`assert np.allclose`).
+`deepchecks==0.19.1` importa `pkg_resources`. Por ello se fija `setuptools==80.10.2` en los requisitos y en el entorno de MLflow Projects. El instalador no debe actualizar setuptools sin respetar esta compatibilidad. Esta solución conserva avisos de seguridad, documentados más abajo; no se presenta como una solución definitiva.
 
-#### Evidencia de Ejecución Exitosa:
-![Evidencia de ejecución de PyTest](reports/figures/semana7_pytest_evidence.png)
+La suite ejecutó **54 pruebas, todas aprobadas**, que cubren limpieza, ingeniería de variables, entrenamiento, registro y validación de datos. Incluye casos normales y límite, la frontera temporal de fin de año, filas sin target, calentamiento, muestras vacías, semillas fijas y fallos introducidos deliberadamente por duplicados o drift.
 
-```text
-============================= test session starts ==============================
-platform darwin -- Python 3.13.9, pytest-9.1.1, pluggy-1.5.0
-collected 43 items
+Las pruebas de reproducibilidad tienen estos alcances:
 
-tests/test_data.py .                                                     [  2%]
-tests/test_data_deepchecks.py ....                                       [ 11%]
-tests/test_dataset.py .....                                              [ 23%]
-tests/test_features.py ....                                              [ 32%]
-tests/test_p1_experiments.py ........                                    [ 51%]
-tests/test_p2_data.py ...                                                [ 58%]
-tests/test_p2_features.py .....                                          [ 69%]
-tests/test_p2_train.py ...                                               [ 76%]
-tests/test_p3_register.py ..                                             [ 81%]
-tests/test_p3_train.py .....                                             [ 93%]
-tests/test_reproducibility.py ...                                        [100%]
+- `test_lgbm_reproducibility`: dos ajustes de LightGBM con semilla 42 sobre una muestra sintética; compara las predicciones de clase.
+- `test_p2_pipeline_reproducibility_on_real_data`: usa la preparación de producción de P2, muestrea las tres clases, entrena dos modelos de 30 árboles y compara predicciones, probabilidades, F1 macro y balanced accuracy sobre Test. Si falta el Parquet real, la prueba se omite explícitamente; no se sustituye por datos sintéticos.
+- `test_p3_clustering_reproducibility`: compara dos ajustes de StandardScaler + GMM, las asignaciones y las métricas Silhouette/Davies-Bouldin. Usa el Parquet de P3 si existe; en otro caso utiliza una fixture sintética y registra `data_source=synthetic_fixture` en JUnit. En esta ejecución P3 utilizó la fixture sintética.
 
-======================= 43 passed in 10.74s (100% SUCCESS) =======================
-```
-
----
-
-### 7.2 Validación de Calidad y Deriva de Datos con DeepChecks (`make deepchecks`)
-
-Se integró **DeepChecks** (`deepchecks==0.19.1`) para auditar la salud del dataset procesado de MiBici ([`p2_mibici_features_target.parquet`](data/processed/p2_mibici_features_target.parquet)) y detectar posibles derivas temporales entre periodos operativos.
-
-Se ejecuta mediante:
+Para guardar resultados procesables:
 
 ```bash
-make deepchecks
-# O con parámetros personalizados de muestreo:
-python scripts/run_deepchecks.py --sample-size 15000
+python -m pytest tests -v -o junit_family=xunit1 --junitxml=reports/testing/pytest.xml
 ```
 
-#### Suites Evaluadas:
-1. **Suite de Integridad de Datos (`data_integrity`)**:
-   - **Tipos de datos y nulos**: Verifica ausencia de columnas con tipos mixtos y ausencia de variantes ambiguas de valores nulos (`nan`, `null`, `None`).
-   - **Valores informativos y duplicados**: Certifica que ninguna variable predictora sea constante (`IsSingleValue`) y que la tasa de duplicados se mantenga bajo el umbral admisible.
-   - **Outliers y clases**: Detección de anomalías en distribuciones de demanda y balance de la variable objetivo.
-2. **Suite de Deriva y Validación Train vs. Test (`train_test_validation`)**:
-   - **Partición temporal anti-leakage**: Compara el conjunto de entrenamiento (año 2025 completo) contra el conjunto de prueba (año 2026).
-   - **Feature Drift**: Evalúa la estabilidad de las distribuciones en las 22 variables predictoras (lags de salidas, rolling balances de 12h y capacidades).
-   - **Target / Label Drift**: Monitorea que la proporción de desabasto/saturación se mantenga coherente entre 2025 y 2026.
-   - **Multivariate Drift**: Detecta cambios estructurales en las correlaciones multivariadas.
+Evidencia: [log íntegro](reports/testing/pytest.log), [JUnit XML](reports/testing/pytest.xml) y [visor con enlaces a las fuentes](reports/testing/pytest.html). La imagen siguiente es una captura del visor de esos archivos, no de una terminal.
 
-#### Reportes y Evidencia Auditable:
-* Reporte interactivo de integridad: [`reports/deepchecks_data_integrity.html`](reports/deepchecks_data_integrity.html) (7.4 MB)
-* Reporte interactivo de deriva: [`reports/deepchecks_data_drift.html`](reports/deepchecks_data_drift.html) (7.5 MB)
-* Resumen estructurado auditable: [`reports/deepchecks_summary.json`](reports/deepchecks_summary.json)
+![Captura del visor de resultados reales de PyTest](reports/figures/semana7_pytest_evidence.png)
 
-![Evidencia de ejecución de DeepChecks](reports/figures/semana7_deepchecks_evidence.png)
+### 7.2 DeepChecks con los datos reales del entrenamiento
 
----
+Los CSV y Parquet están excluidos de Git. Clonar el repositorio descarga el código; para generar el dataset local se ejecuta:
 
-### 7.3 Chequeos Básicos de Seguridad y Auditoría de Vulnerabilidades
+```bash
+make data
+make deepchecks
+# Equivalente y con opciones explícitas:
+python -m scripts.run_deepchecks --sample-size 15000
+# Para otro archivo o directorio de salida:
+python -m scripts.run_deepchecks --data-path data/processed/p2_mibici_features_target.parquet --output-dir reports
+```
 
-Siguiendo las mejores prácticas de gobernanza técnica, el proyecto implementa salvaguardas activas contra fugas de credenciales y vulnerabilidades de software.
+La implementación está en [`src/validation/p2_checks.py`](src/validation/p2_checks.py). Reutiliza `get_train_test_data` del entrenamiento de P2: excluye el calentamiento y `target=-1`, utiliza **17 variables predictoras**, excluye `ratio` y `delta_net` y aplica Train con `timestamp < 2025-12-31 22:00:00` y Test desde `2026-01-01 00:00:00`. El muestreo ocurre después de esa separación. La fecha y la clave estación/hora se conservan como metadatos para ejecutar los chequeos de fuga temporal e identidad.
 
-#### 1. Protección contra Exposición de Credenciales y Secretos
-* **Exclusión Estricta en Git**: El archivo [`.gitignore`](.gitignore) excluye de forma preventiva cualquier archivo `.env`, `.env.*` (salvo `.env.example`), tokens, claves privadas, bases de datos SQLite locales (`mlflow.db`) y modelos serializados.
-* **Inyección por Entorno**: Todo parámetro sensible o configurable (como `MLFLOW_TRACKING_URI`) se obtiene mediante `python-dotenv` y variables de entorno del sistema (`os.getenv`), evitando cadenas hardcodeadas en el código fuente.
-* **Auditoría de Historial**: Se verificó el historial de Git para asegurar que ninguna credencial, clave de API ni certificado haya quedado registrado en commits anteriores.
+En esta verificación se reconstruyeron **7,196,640 filas** desde los **21 CSV mensuales reales** de enero de 2025 a septiembre de 2026. Se auditaron 7,500 filas de Train y 7,500 de Test, con semilla 42. El [manifiesto](reports/testing/data_manifest.json) identifica los archivos de origen y el resumen de DeepChecks contiene el SHA-256 del Parquet auditado.
 
-#### 2. Análisis Estático de Seguridad con Bandit (`make security_code`)
-Permite escanear el código fuente de `src/` y `scripts/` en busca de patrones de riesgo (inyecciones, llamadas inseguras, deserializaciones indebidas):
+| Suite | Chequeos ejecutados | Condiciones incumplidas | Sin ejecutar | Resultado |
+|---|---:|---:|---:|---|
+| Integridad | 12 | 0 | 0 | Aprobada |
+| Validación Train/Test | 12 | 0 | 0 | Aprobada |
+
+`Outlier Sample Detection` genera un diagnóstico descriptivo en la suite estándar; no tiene condición de aprobación. El resto de comprobaciones con condiciones aprobó. Estas conclusiones corresponden a la muestra y los umbrales del informe, no garantizan ausencia de problemas en todas las filas o en datos futuros.
+
+Las pruebas automatizadas comprueban la aprobación real de las suites, incluidos los errores de ejecución. Además introducen duplicados y drift deliberadamente para comprobar que los detectan. Los HTML se exportan sin widgets, evitando depender de un archivo `anywidget.js` externo. El CLI guarda los informes y devuelve **0** si las suites aprueban, **1** si hay condiciones incumplidas o chequeos sin ejecutar, y **2** si los datos o argumentos no son válidos. No imprime éxito cuando hay hallazgos.
+
+Evidencia de la misma ejecución:
+
+- [Reporte de integridad](reports/deepchecks_data_integrity.html).
+- [Reporte Train/Test](reports/deepchecks_data_drift.html).
+- [Resumen con condiciones, versiones y SHA-256](reports/deepchecks_summary.json).
+- [Log íntegro](reports/testing/deepchecks.log) y [visor estático](reports/testing/deepchecks.html).
+
+Capturas directas de los HTML exportados: [integridad](reports/figures/semana7_deepchecks_html.png) y [Train/Test](reports/figures/semana7_deepchecks_drift_html.png).
+
+![Captura del visor de DeepChecks sobre datos reales](reports/figures/semana7_deepchecks_evidence.png)
+
+### 7.3 Seguridad: resultados y limitaciones
 
 ```bash
 make security_code
-# Equivalente a: python -m bandit -r src scripts
-```
-* **Resultados**: 5,111 líneas de código analizadas. **0 vulnerabilidades de severidad Alta y 0 de severidad Media**. Los 23 avisos de severidad Baja corresponden a llamadas controladas de `subprocess.check_output(['git', ...])` sin `shell=True` utilizadas exclusivamente para registrar el commit actual y estado en MLflow.
-
-#### 3. Auditoría de Vulnerabilidades en Dependencias con pip-audit (`make security_deps`)
-Monitorea la base de datos pública de vulnerabilidades (PyPI / OSV) para detectar paquetes vulnerables:
-
-```bash
 make security_deps
-# Equivalente a: python -m pip_audit
+# Para conservar los resultados detallados:
+python -m bandit -r src scripts -f json -o reports/testing/bandit.json
+python -m pip_audit --format json --output reports/testing/pip-audit.json
 ```
-* **Mitigación Inmediata Aplicada**: Se fijó `pyasn1==0.6.5` en [`requirements.txt`](requirements.txt), corrigiendo 4 CVEs conocidas de manera limpia sin generar conflictos con las dependencias del proyecto.
-* **Dependencias de MLflow**: Los avisos restantes vinculados a paquetes transitivos de `mlflow==3.5.0` (`cryptography`, `fastmcp`, `pyarrow`) se encuentran documentados en el PR #29, confirmando que su actualización requiere la migración mayor de MLflow a una versión superior con pruebas de regresión dedicadas.
 
-#### Evidencia de Análisis de Seguridad:
-![Evidencia de análisis de seguridad con Bandit y pip-audit](reports/figures/semana7_security_evidence.png)
+**Secretos y datos.** `.gitignore` excluye `.env`, `.env.*` salvo `.env.example`, datos locales, modelos y bases de MLflow. La configuración carga las variables de entorno mediante `python-dotenv`. La revisión de patrones en el código actual y de nombres de archivos sensibles en las ramas locales no encontró coincidencias. El [registro de revisión](reports/testing/secrets-review.json) delimita ese alcance: no es un escaneo del contenido completo del historial ni una garantía de ausencia de secretos.
+
+**Bandit.** Analizó **5,159 líneas**, con **0 hallazgos altos, 0 medios y 23 bajos**: B404 (importación de subprocess), B603 (ejecución de subprocesos) y B607 (ejecutable con ruta parcial). Se revisaron las llamadas de Git con argumentos fijos y sin `shell=True`. El resultado y las ubicaciones se conservan en [Bandit JSON](reports/testing/bandit.json). Devuelve código 1 por sus hallazgos; no se han ocultado.
+
+**Dependencias.** La auditoría del entorno de revisión encontró **81 avisos conocidos en nueve paquetes**. El recuento incluye herramientas del entorno, como pip; los detalles, identificadores y versiones corregidas propuestas están en [pip-audit JSON](reports/testing/pip-audit.json). El resultado depende de las versiones instaladas y de la base consultada en esa fecha.
+
+| Paquete | Versión auditada | Avisos | Tratamiento pendiente |
+|---|---|---:|---|
+| cryptography | 46.0.7 | 7 | Migrar MLflow para eliminar el límite `<47` y volver a auditar. |
+| diskcache | 5.6.3 | 2 | El escáner no informa versión corregida; revisar exposición y alternativa. |
+| fastmcp | 2.14.7 | 4 | Migrar MLflow para eliminar el límite `<3`. |
+| joserfc | 1.7.5 | 1 | Evaluar actualización a 1.7.6 o posterior y ejecutar regresiones. |
+| mlflow | 3.5.0 | 47 | Planificar actualización, validar tracking, artefactos y Model Registry. |
+| pip | 25.0.1 | 12 | Actualizar la herramienta en el entorno y repetir auditoría. |
+| pyarrow | 21.0.0 | 2 | Migrar MLflow para eliminar el límite `<22`. |
+| setuptools | 80.10.2 | 3 | Resolver primero el uso de `pkg_resources` de DeepChecks. |
+| tornado | 6.5.10 | 3 | Evaluar actualización a 6.6 o posterior y ejecutar regresiones. |
+
+Se conserva `pyasn1==0.6.5`, corrección aplicada por el equipo en el PR #29; no tuvo hallazgos en esta auditoría. No se actualizaron incidentalmente las dependencias centrales de MLflow ni se afirma que los 81 avisos estén mitigados. El siguiente paso de seguridad es resolver las compatibilidades, actualizar el entorno y repetir las pruebas y el análisis. `pip-audit` devuelve código 1 mientras detecte vulnerabilidades.
+
+Evidencia: [log de pip-audit](reports/testing/pip-audit.log), [versiones instaladas](reports/testing/environment.txt), [comandos y códigos de salida](reports/testing/execution.json) y [visor](reports/testing/security.html).
+
+![Captura del visor de resultados y pendientes de seguridad](reports/figures/semana7_security_evidence.png)
+
+El [reporte del equipo corregido](docs/TC5061_Reporte_Testing_Seguridad_Equipo30.pdf) reúne el alcance, resultados y limitaciones de esta ejecución. Las capturas proceden de los visores de los archivos reales de ejecución, no de tarjetas que simulan salida de consola.
 
 ---
 
@@ -489,7 +477,7 @@ Se adopta el estándar de [Conventional Commits](https://www.conventionalcommits
 |---|---|---|
 | **Ricardo Bahamón** | **MLOps & Pipeline Engineer** | Arquitectura del pipeline reproducible, orquestación de ingesta Parquet, configuración de MLflow, tracking de artefactos, pruebas de reproducibilidad y validación de datos con DeepChecks. |
 | **Diego Becerril** | **Lead Data Scientist & Modeling** | Formulación matemática del target de riesgo, ingeniería de variables de series de tiempo (lags/rollings), calibración de LightGBM y chequeos básicos de seguridad (Bandit/pip-audit). |
-| **Gregorio Escobedo** | **Data Engineer & Quality QA** | Scraping dinámico resiliente, saneamiento de catálogos geoespaciales, validación de integridad criptográfica (SHA-256) y pruebas unitarias base. |
+| **Gregorio Escobedo** | **Data Engineer & Quality QA** | Scraping dinámico resiliente, saneamiento de catálogos geoespaciales, validación de integridad criptográfica (SHA-256), alineación de DeepChecks con el entrenamiento de P2 y pruebas de regresión de calidad. |
 | **Freddin Alcantara** | **Product & Deployment Lead** | Elaboración del ML Canvas, especificación de requisitos operativos del CCO, diseño de diagnósticos visuales y documentación técnica. |
 
 ---

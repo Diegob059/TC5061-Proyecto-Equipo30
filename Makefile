@@ -13,7 +13,8 @@ PYTHON_INTERPRETER = python3
 ## Install Python dependencies and local package in editable mode
 .PHONY: requirements
 requirements:
-	$(PYTHON_INTERPRETER) -m pip install -U pip setuptools wheel
+	$(PYTHON_INTERPRETER) -m pip install -U pip wheel
+	$(PYTHON_INTERPRETER) -m pip install setuptools==80.10.2
 	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
 	$(PYTHON_INTERPRETER) -m pip install -e .
 
@@ -95,7 +96,7 @@ mlflow:
 ## Run DeepChecks data integrity and train/test drift validation suites
 .PHONY: deepchecks
 deepchecks:
-	$(PYTHON_INTERPRETER) scripts/run_deepchecks.py
+	$(PYTHON_INTERPRETER) -m scripts.run_deepchecks
 
 #################################################################################
 # Self Documenting Commands                                                     #
