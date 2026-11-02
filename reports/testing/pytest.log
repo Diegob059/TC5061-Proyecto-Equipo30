@@ -1,0 +1,97 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.14, pytest-9.1.1, pluggy-1.7.0 -- /private/tmp/equipo30-revision-env/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/gescobed_mac/Documents/Operaciones de aprendizaje automático/TC5061-Proyecto-Equipo30-testing
+plugins: platformdirs-4.13.4, anyio-4.15.1
+collecting ... collected 54 items
+
+tests/test_data.py::test_code_is_tested PASSED                           [  1%]
+tests/test_data_deepchecks.py::test_samples_match_production_features_and_exclude_future_information PASSED [  3%]
+tests/test_data_deepchecks.py::test_samples_exclude_cutoff_hours_warmup_and_invalid_targets PASSED [  5%]
+tests/test_data_deepchecks.py::test_sampling_is_reproducible_and_preserves_odd_requested_size PASSED [  7%]
+tests/test_data_deepchecks.py::test_sampling_rejects_invalid_sizes[0] PASSED [  9%]
+tests/test_data_deepchecks.py::test_sampling_rejects_invalid_sizes[1] PASSED [ 11%]
+tests/test_data_deepchecks.py::test_sampling_rejects_invalid_sizes[-2] PASSED [ 12%]
+tests/test_data_deepchecks.py::test_sampling_rejects_missing_data PASSED [ 14%]
+tests/test_data_deepchecks.py::test_sampling_rejects_empty_temporal_partition PASSED [ 16%]
+tests/test_data_deepchecks.py::test_dataset_preserves_datetime_and_station_hour_identity PASSED [ 18%]
+tests/test_data_deepchecks.py::test_integrity_suite_really_passes_on_clean_fixture PASSED [ 20%]
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture PASSED [ 22%]
+tests/test_data_deepchecks.py::test_integrity_suite_detects_duplicate_rows PASSED [ 24%]
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift PASSED  [ 25%]
+tests/test_data_deepchecks.py::test_cli_writes_failure_summary_and_returns_nonzero PASSED [ 27%]
+tests/test_data_deepchecks.py::test_html_report_replaces_requested_path_without_numbered_copies PASSED [ 29%]
+tests/test_dataset.py::test_obtener_estaciones_comunes_excluye_estaciones_nuevas PASSED [ 31%]
+tests/test_dataset.py::test_limpiar_viajes_elimina_duplicados_exactos PASSED [ 33%]
+tests/test_dataset.py::test_limpiar_viajes_elimina_filas_con_genero_o_anio_nulo PASSED [ 35%]
+tests/test_dataset.py::test_limpiar_viajes_filtra_por_duracion PASSED    [ 37%]
+tests/test_dataset.py::test_limpiar_viajes_filtra_por_estaciones_comunes PASSED [ 38%]
+tests/test_features.py::test_build_hourly_profile_filas_suman_uno PASSED [ 40%]
+tests/test_features.py::test_build_bucketed_profile_filas_suman_uno_y_agrupa_horas PASSED [ 42%]
+tests/test_features.py::test_build_station_features_filtra_bajo_volumen_y_excluye_ubicacion PASSED [ 44%]
+tests/test_features.py::test_build_station_features_rechaza_granularidad_desconocida PASSED [ 46%]
+tests/test_p1_experiments.py::test_temporal_boundaries_exclude_gaps_and_never_overlap PASSED [ 48%]
+tests/test_p1_experiments.py::test_selection_ignores_test_and_baseline_even_if_test_is_better PASSED [ 50%]
+tests/test_p1_experiments.py::test_model_roundtrip_has_signature_and_requires_no_targets[semanal] PASSED [ 51%]
+tests/test_p1_experiments.py::test_model_roundtrip_has_signature_and_requires_no_targets[historico] PASSED [ 53%]
+tests/test_p1_experiments.py::test_model_roundtrip_has_signature_and_requires_no_targets[arbol] PASSED [ 55%]
+tests/test_p1_experiments.py::test_inventory_metrics_match_previous_delivery_and_use_validation_margin PASSED [ 57%]
+tests/test_p1_experiments.py::test_historical_fallback_for_station_absent_from_training PASSED [ 59%]
+tests/test_p1_experiments.py::test_candidate_logging_restores_model_with_signature_and_target_free_example PASSED [ 61%]
+tests/test_p2_data.py::test_p2_config_thresholds_and_targets PASSED      [ 62%]
+tests/test_p2_data.py::test_p2_data_manifest_accessible PASSED           [ 64%]
+tests/test_p2_data.py::test_p2_sha256_computation PASSED                 [ 66%]
+tests/test_p2_features.py::test_p2_compute_target_variable PASSED        [ 68%]
+tests/test_p2_features.py::test_p2_add_demand_lags PASSED                [ 70%]
+tests/test_p2_features.py::test_p2_add_rolling_balance_features PASSED   [ 72%]
+tests/test_p2_features.py::test_p2_add_cyclical_calendar_features PASSED [ 74%]
+tests/test_p2_features.py::test_p2_get_train_test_data_anti_leakage PASSED [ 75%]
+tests/test_p2_train.py::test_p2_candidate_configs_diversity PASSED       [ 77%]
+tests/test_p2_train.py::test_p2_evaluate_predictions_metrics PASSED      [ 79%]
+tests/test_p2_train.py::test_p2_register_rejects_empty_reason PASSED     [ 81%]
+tests/test_p3_register.py::test_p3_register_rejects_empty_reason PASSED  [ 83%]
+tests/test_p3_register.py::test_p3_reports_integrity PASSED              [ 85%]
+tests/test_p3_train.py::test_fit_and_evaluate_recupera_dos_clusters_separados[kmeans] PASSED [ 87%]
+tests/test_p3_train.py::test_fit_and_evaluate_recupera_dos_clusters_separados[gmm] PASSED [ 88%]
+tests/test_p3_train.py::test_fit_and_evaluate_rechaza_algoritmo_desconocido PASSED [ 90%]
+tests/test_p3_train.py::test_seleccionar_mejor_elige_mayor_silueta PASSED [ 92%]
+tests/test_p3_train.py::test_seleccionar_candidatos_elige_el_mejor_k_por_combinacion_y_los_mas_diversos PASSED [ 94%]
+tests/test_reproducibility.py::test_lgbm_reproducibility PASSED          [ 96%]
+tests/test_reproducibility.py::test_p2_pipeline_reproducibility_on_real_data PASSED [ 98%]
+tests/test_reproducibility.py::test_p3_clustering_reproducibility PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../private/tmp/equipo30-revision-env/lib/python3.12/site-packages/deepchecks/core/serialization/dataframe/html.py:16
+  /private/tmp/equipo30-revision-env/lib/python3.12/site-packages/deepchecks/core/serialization/dataframe/html.py:16: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import parse_version
+
+tests/test_data_deepchecks.py::test_integrity_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_integrity_suite_detects_duplicate_rows
+tests/test_data_deepchecks.py::test_html_report_replaces_requested_path_without_numbered_copies
+  /private/tmp/equipo30-revision-env/lib/python3.12/site-packages/deepchecks/tabular/suite.py:117: DeprecationWarning: the `interpolation=` argument to quantile was renamed to `method=`, which has additional options.
+  Users of the modes 'nearest', 'lower', 'higher', or 'midpoint' are encouraged to review the method they used. (Deprecated NumPy 1.22)
+    check_result = check.run_logic(context, dataset_kind=DatasetKind.TRAIN)
+
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+  /private/tmp/equipo30-revision-env/lib/python3.12/site-packages/deepchecks/tabular/checks/train_test_validation/train_test_samples_mix.py:85: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    duplicates_df = duplicates_df.applymap(lambda x: None if x == NAN_REPLACEMENT else x)
+
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+  /Users/gescobed_mac/Documents/Operaciones de aprendizaje automático/TC5061-Proyecto-Equipo30/.venv/lib/python3.12/site-packages/sklearn/utils/_tags.py:338: DeprecationWarning: The following error was raised: 'MyModelWrapper' object has no attribute '__sklearn_tags__'. It seems that there are no classes that implement `__sklearn_tags__` in the MRO and/or all classes in the MRO call `super().__sklearn_tags__()`. Make sure to inherit from `BaseEstimator` which implements `__sklearn_tags__` (or alternatively define `__sklearn_tags__` but we don't recommend this approach). Note that `BaseEstimator` needs to be on the right side of other Mixins in the inheritance order. The default are now used instead since retrieving tags failed. This warning will be replaced by an error in 1.8.
+    warnings.warn(
+
+tests/test_data_deepchecks.py::test_integrity_suite_detects_duplicate_rows
+  /private/tmp/equipo30-revision-env/lib/python3.12/site-packages/deepchecks/tabular/dataset.py:236: UserWarning: Dataframe index has duplicate indexes, setting index to [0,1..,n-1].
+    warnings.warn('Dataframe index has duplicate indexes, setting index to [0,1..,n-1].')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/gescobed_mac/Documents/Operaciones de aprendizaje automático/TC5061-Proyecto-Equipo30-testing/reports/testing/pytest.xml -
+======================= 54 passed, 15 warnings in 11.54s =======================

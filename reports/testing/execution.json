@@ -1,0 +1,87 @@
+{
+  "started_at": "2026-11-02T03:38:42.965201+01:00",
+  "branch": "codex/corregir-deepchecks-semana7",
+  "base_commit": "f1ffe78e67bf0028df416ade25ccaa11254f1926",
+  "commands": {
+    "pytest": {
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "tests",
+        "-v",
+        "--tb=short",
+        "-o",
+        "junit_family=xunit1",
+        "--junitxml=reports/testing/pytest.xml"
+      ],
+      "started_at": "2026-11-02T03:38:43.025289+01:00",
+      "finished_at": "2026-11-02T03:38:55.679092+01:00",
+      "exit_code": 0,
+      "log": "pytest.log",
+      "log_sha256": "b248316803d142d5f32f78d452b6f1679fa3b8948f402c6bb6952cc1f069a66c"
+    },
+    "deepchecks": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.run_deepchecks",
+        "--sample-size",
+        "15000"
+      ],
+      "started_at": "2026-11-02T03:38:55.679745+01:00",
+      "finished_at": "2026-11-02T03:39:06.135328+01:00",
+      "exit_code": 0,
+      "log": "deepchecks.log",
+      "log_sha256": "c7283cb074c4e2ed173e1cb778b2a5dff4d2a503d581217dea0623849aab7283"
+    },
+    "bandit": {
+      "command": [
+        "python",
+        "-m",
+        "bandit",
+        "-r",
+        "src",
+        "scripts",
+        "-f",
+        "json",
+        "-o",
+        "reports/testing/bandit.json"
+      ],
+      "started_at": "2026-11-02T03:39:06.135682+01:00",
+      "finished_at": "2026-11-02T03:39:06.455570+01:00",
+      "exit_code": 1,
+      "log": "bandit.log",
+      "log_sha256": "44f2fe17c3b3ff956c8dad3ce90b5e7e425a81111162a874375d6807525eca2a"
+    },
+    "pip-audit": {
+      "command": [
+        "python",
+        "-m",
+        "pip_audit",
+        "--format",
+        "json",
+        "--output",
+        "reports/testing/pip-audit.json",
+        "--cache-dir",
+        "/private/tmp/equipo30-audit-cache"
+      ],
+      "started_at": "2026-11-02T03:39:06.455842+01:00",
+      "finished_at": "2026-11-02T03:39:11.656481+01:00",
+      "exit_code": 1,
+      "log": "pip-audit.log",
+      "log_sha256": "5dbd29da1ffacc07acb2a46fa5494ae1e9779bc38483def76c3fc2081b896b49"
+    }
+  },
+  "source_sha256": {
+    "requirements.txt": "fc5f07d9e32d9c8ef55d28a51a23d6c6bf8a42d38e3ff373250b6cab19512cbc",
+    "python_env.yaml": "deb41c0da771180a0a092403042ce109dc38f3e98bca577f938f123f9ccf96dc",
+    "Makefile": "e1bde388698449a2b7c344a90be328d310167d33caf5eb81a652de64ad9b8f8f",
+    "scripts/run_deepchecks.py": "4a08a272f298647dfdd0f5ccef8a0d715f96707c9b51ffde11ebf1a2996c7ea9",
+    "src/validation/p2_checks.py": "9f9c42d09bcfa9bd28b6aa7f09e5c798f457aa590be78bdb0aefd66316ec5ed7",
+    "tests/test_data_deepchecks.py": "5802fdde2f29da66476418280c3ae1f3a0b86e33800da926fcc6b17e4f0735d5",
+    "tests/test_reproducibility.py": "bfc6b1b6acefc437371253e6e72b0de660e6973e0bceb5de6ef76809fd25abb4"
+  },
+  "finished_at": "2026-11-02T03:39:11.914185+01:00",
+  "source_commit": "4e7a2320bfa4c78c3722fa0375e9d9e2d8680ad7"
+}
