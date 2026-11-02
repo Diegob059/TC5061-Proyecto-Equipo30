@@ -1,6 +1,6 @@
 {
   "started_at": "2026-11-02T03:39:06.455842+01:00",
-  "branch": "codex/corregir-deepchecks-semana7",
+  "branch": "corregir-deepchecks-semana7",
   "base_commit": "a148bf0ad330fb84aa3798a0cf9fbddbc049b48a",
   "commands": {
     "pip-audit": {
@@ -84,5 +84,6 @@
     "tests/test_reproducibility.py": "bfc6b1b6acefc437371253e6e72b0de660e6973e0bceb5de6ef76809fd25abb4"
   },
   "finished_at": "2026-11-02T03:57:26.610953+01:00",
-  "source_commit": "a148bf0ad330fb84aa3798a0cf9fbddbc049b48a"
+  "source_commit": "a148bf0ad330fb84aa3798a0cf9fbddbc049b48a",
+  "branch_note": "Nombre actual de la rama de entrega, renombrada después de la ejecución. source_commit y source_sha256 identifican el código probado."
 }

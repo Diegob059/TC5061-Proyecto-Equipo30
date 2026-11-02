@@ -332,7 +332,7 @@ Por diseño, el repositorio **no incluye** (ver `.gitignore`): los archivos de d
 
 ## 🛡️ 7. Pruebas Automatizadas, Validación de Datos y Seguridad (Semana 7)
 
-La ejecución verificada del 2 de noviembre de 2026 corresponde al código de la rama `codex/corregir-deepchecks-semana7`. Los comandos, fechas, códigos de salida y hashes del código probado se conservan en [`reports/testing/execution.json`](reports/testing/execution.json); las versiones completas del entorno están en [`environment.txt`](reports/testing/environment.txt).
+La ejecución verificada del 2 de noviembre de 2026 corresponde al código del commit `a148bf0`. La rama de entrega es `corregir-deepchecks-semana7`. Los comandos, fechas, códigos de salida y hashes del código probado se conservan en [`reports/testing/execution.json`](reports/testing/execution.json); las versiones completas del entorno están en [`environment.txt`](reports/testing/environment.txt).
 
 ### 7.1 Instalación y ejecución de PyTest
 
