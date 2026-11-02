@@ -1,215 +1,108 @@
-#!/usr/bin/env python3
-"""
-Módulo de Validación de Datos y Detección de Drift con DeepChecks.
-==================================================================
-Ejecuta suites de validación automatizada de datos para el proyecto MiBici:
-1. Suite de Integridad de Datos (data_integrity):
-   - Tipos de datos consistentes, columnas con nulos inesperados, filas duplicadas
-   - Detección de outliers y clases desbalanceadas en el dataset procesado de P2.
-2. Suite de Validación Train vs. Test y Drift (train_test_validation):
-   - Deriva de distribución (Feature Drift) entre 2025 (entrenamiento) y 2026 (prueba)
-   - Deriva de etiquetas (Target Drift) y verificación de fuga entre particiones.
-3. Exportación de reportes interactivos HTML en `reports/` y resumen JSON auditable.
-
-Uso:
-    python scripts/run_deepchecks.py
-    python scripts/run_deepchecks.py --sample-size 15000
-"""
+"""Genera informes de DeepChecks y devuelve 1 si hay condiciones incumplidas o errores."""
 
 import json
-from pathlib import Path
+import platform
 import time
-from typing import Optional
+from datetime import UTC, datetime
+from importlib.metadata import version
+from pathlib import Path
+from typing import Annotated
 
-# Compatibilidad con NumPy 2.x para dependencias internas de DeepChecks
-import numpy as np
-
-if not hasattr(np, "Inf"):
-    np.Inf = np.inf
-if not hasattr(np, "NaN"):
-    np.NaN = np.nan
-if not hasattr(np, "bool"):
-    np.bool = bool
-
-from deepchecks.tabular import Dataset
-from deepchecks.tabular.suites import data_integrity, train_test_validation
-from loguru import logger
 import pandas as pd
 import typer
 
-from src.config import PROJ_ROOT, REPORTS_DIR
-from src.p2_config import P2_FEATURES_TARGET_PARQUET, TRAIN_CUTOFF_DATE
-
-app = typer.Typer(
-    help="CLI para validación de datos e integridad con DeepChecks (MiBici Guadalajara)."
+from src.config import REPORTS_DIR
+from src.p2_config import P2_FEATURES_TARGET_PARQUET, TRAIN_CUTOFF_DATE, TRAIN_END_DATE
+from src.validation.p2_checks import (
+    file_sha256,
+    load_dataset_samples,
+    run_data_integrity_suite,
+    run_train_test_drift_suite,
 )
 
-
-def load_dataset_samples(
-    parquet_path: Path, sample_size: int = 15000, random_state: int = 42
-) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
-    """Carga y particiona temporalmente una muestra representativa de los datos de P2."""
-    if not parquet_path.exists():
-        raise FileNotFoundError(
-            f"No se encontró el archivo de datos procesados en: {parquet_path}. "
-            "Ejecute primero: python -m src.features.p2_features"
-        )
-
-    logger.info(f"Cargando dataset desde: {parquet_path}...")
-    # Cargar y excluir el periodo inicial de calentamiento (168h de rezagos)
-    df = pd.read_parquet(parquet_path).dropna(subset=["salidas_lag_168", "balance_rolling_12h"])
-
-    # Columnas numéricas de características
-    drop_cols = ["timestamp", "station_id", "target", "risk_ratio", "net_flow_target"]
-    feature_cols = [
-        c for c in df.columns if c not in drop_cols and pd.api.types.is_numeric_dtype(df[c])
-    ]
-
-    # Partición temporal respetando el corte anti-leakage del proyecto
-    train_mask = df["timestamp"] <= TRAIN_CUTOFF_DATE
-    test_mask = df["timestamp"] >= "2026-01-01"
-
-    df_train = df[train_mask]
-    df_test = df[test_mask]
-
-    # Muestreo estratificado/aleatorio representativo para velocidad y cobertura
-    half_sample = sample_size // 2
-    if len(df_train) > half_sample:
-        df_train_sample = df_train.sample(n=half_sample, random_state=random_state)
-    else:
-        df_train_sample = df_train
-
-    if len(df_test) > half_sample:
-        df_test_sample = df_test.sample(n=half_sample, random_state=random_state)
-    else:
-        df_test_sample = df_test
-
-    logger.info(
-        f"Muestras preparadas: Train (2025) = {len(df_train_sample):,} filas | "
-        f"Test (2026) = {len(df_test_sample):,} filas | Features = {len(feature_cols)}"
-    )
-
-    return df_train_sample, df_test_sample, feature_cols
-
-
-def run_data_integrity_suite(
-    df: pd.DataFrame, feature_cols: list[str], output_html: Path
-) -> dict:
-    """Ejecuta la suite de integridad de datos y genera el reporte HTML."""
-    logger.info("Iniciando Suite de Integridad de Datos (data_integrity)...")
-    ds = Dataset(df[feature_cols + ["target"]], label="target", cat_features=[])
-
-    suite = data_integrity()
-    suite_result = suite.run(ds)
-
-    output_html.parent.mkdir(parents=True, exist_ok=True)
-    if output_html.exists():
-        output_html.unlink()
-    suite_result.save_as_html(str(output_html))
-    logger.success(f"✓ Reporte de Integridad guardado en: {output_html}")
-
-    passed_checks = [c.check.name() for c in suite_result.get_passed_checks()]
-    not_passed_checks = [c.check.name() for c in suite_result.get_not_passed_checks()]
-
-    return {
-        "suite_name": "data_integrity",
-        "total_checks": len(suite_result.results),
-        "passed_checks_count": len(passed_checks),
-        "passed_checks": passed_checks,
-        "not_passed_checks": not_passed_checks,
-        "all_passed": bool(suite_result.passed()),
-        "report_path": str(output_html.relative_to(PROJ_ROOT)),
-    }
-
-
-def run_train_test_drift_suite(
-    df_train: pd.DataFrame,
-    df_test: pd.DataFrame,
-    feature_cols: list[str],
-    output_html: Path,
-) -> dict:
-    """Ejecuta la suite de validación train vs test (drift) y genera el reporte HTML."""
-    logger.info(
-        "Iniciando Suite de Deriva de Datos y Validación Train/Test (train_test_validation)..."
-    )
-    train_ds = Dataset(df_train[feature_cols + ["target"]], label="target", cat_features=[])
-    test_ds = Dataset(df_test[feature_cols + ["target"]], label="target", cat_features=[])
-
-    suite = train_test_validation()
-    suite_result = suite.run(train_dataset=train_ds, test_dataset=test_ds)
-
-    output_html.parent.mkdir(parents=True, exist_ok=True)
-    if output_html.exists():
-        output_html.unlink()
-    suite_result.save_as_html(str(output_html))
-    logger.success(f"✓ Reporte de Data Drift guardado en: {output_html}")
-
-    passed_checks = [c.check.name() for c in suite_result.get_passed_checks()]
-    not_passed_checks = [c.check.name() for c in suite_result.get_not_passed_checks()]
-
-    return {
-        "suite_name": "train_test_validation",
-        "total_checks": len(suite_result.results),
-        "passed_checks_count": len(passed_checks),
-        "passed_checks": passed_checks,
-        "not_passed_checks": not_passed_checks,
-        "all_passed": bool(suite_result.passed()),
-        "report_path": str(output_html.relative_to(PROJ_ROOT)),
-    }
+app = typer.Typer(
+    help="Auditoría de datos reales de P2 con las particiones de entrenamiento."
+)
 
 
 @app.command()
 def main(
-    sample_size: int = typer.Option(
-        15000, help="Número total de observaciones a muestrear (50% train, 50% test)."
-    ),
-    data_path: Optional[Path] = typer.Option(
-        None, help="Ruta opcional al archivo parquet procesado de P2."
-    ),
+    sample_size: Annotated[
+        int, typer.Option(min=2, help="Muestra total entre Train y Test.")
+    ] = 15000,
+    data_path: Annotated[
+        Path | None, typer.Option(help="Parquet procesado de P2.")
+    ] = None,
+    output_dir: Annotated[
+        Path, typer.Option(help="Directorio de informes HTML y JSON.")
+    ] = REPORTS_DIR,
 ):
-    """Ejecuta las suites completas de DeepChecks sobre el dataset de MiBici."""
-    t0 = time.time()
+    """Conserva los hallazgos en los informes y señala los fallos con el código de salida."""
+    started = time.monotonic()
     parquet_path = data_path or P2_FEATURES_TARGET_PARQUET
-    integrity_html = REPORTS_DIR / "deepchecks_data_integrity.html"
-    drift_html = REPORTS_DIR / "deepchecks_data_drift.html"
-    summary_json = REPORTS_DIR / "deepchecks_summary.json"
-
-    df_train, df_test, feature_cols = load_dataset_samples(
-        parquet_path=parquet_path, sample_size=sample_size
+    try:
+        train, test, features = load_dataset_samples(parquet_path, sample_size)
+    except (FileNotFoundError, ValueError) as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(f"Dataset real: {parquet_path.name}")
+    typer.echo(
+        f"Train: {len(train)} filas | Test: {len(test)} filas | Features: {len(features)}"
     )
-
-    df_combined = pd.concat([df_train, df_test], ignore_index=True)
-
-    # 1. Integridad
-    integrity_summary = run_data_integrity_suite(
-        df=df_combined, feature_cols=feature_cols, output_html=integrity_html
+    integrity = run_data_integrity_suite(
+        pd.concat([train, test]),
+        features,
+        output_dir / "deepchecks_data_integrity.html",
     )
-
-    # 2. Train/Test Drift
-    drift_summary = run_train_test_drift_suite(
-        df_train=df_train,
-        df_test=df_test,
-        feature_cols=feature_cols,
-        output_html=drift_html,
+    drift = run_train_test_drift_suite(
+        train, test, features, output_dir / "deepchecks_data_drift.html"
     )
-
-    elapsed = time.time() - t0
+    suites = {"data_integrity": integrity, "train_test_drift": drift}
     summary = {
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "dataset": str(parquet_path.name),
-        "train_samples": len(df_train),
-        "test_samples": len(df_test),
-        "features_evaluated": len(feature_cols),
-        "elapsed_seconds": round(elapsed, 2),
-        "suites": {
-            "data_integrity": integrity_summary,
-            "train_test_drift": drift_summary,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "dataset": parquet_path.name,
+        "dataset_sha256": file_sha256(parquet_path),
+        "data_source": "real_parquet",
+        "random_seed": 42,
+        "train_samples": len(train),
+        "test_samples": len(test),
+        "features_evaluated": len(features),
+        "feature_columns": features,
+        "preparation": {
+            "function": "src.features.p2_features.get_train_test_data",
+            "train_timestamp_strictly_before": TRAIN_CUTOFF_DATE,
+            "test_timestamp_from": TRAIN_END_DATE,
+            "valid_targets": [0, 1, 2],
+            "datetime_metadata": "timestamp",
+            "index_metadata": "station_id|timestamp",
         },
+        "versions": {
+            name: version(name)
+            for name in ["deepchecks", "numpy", "pandas", "scikit-learn", "setuptools"]
+        },
+        "python_version": platform.python_version(),
+        "elapsed_seconds": round(time.monotonic() - started, 2),
+        "suites": suites,
+        "all_passed": all(suite["all_passed"] for suite in suites.values()),
     }
-
-    summary_json.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
-    logger.success(f"✓ Resumen auditable de DeepChecks guardado en: {summary_json}")
-    logger.info(f"Proceso de DeepChecks finalizado con éxito en {elapsed:.1f}s.")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "deepchecks_summary.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    for name, suite in suites.items():
+        status = "PASS" if suite["all_passed"] else "FAIL"
+        typer.echo(
+            f"{name}: {status} | checks={suite['total_checks']} | no ejecutados={len(suite['not_run_checks'])}"
+        )
+        for check in suite["not_passed_checks"]:
+            typer.echo(f"  Condición incumplida: {check}")
+        for check in suite["not_run_checks"]:
+            typer.echo(f"  Error: {check['check']}: {check['reason']}")
+    typer.echo(
+        f"Informes guardados en {output_dir}; all_passed={summary['all_passed']}"
+    )
+    if not summary["all_passed"]:
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

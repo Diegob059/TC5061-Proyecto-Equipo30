@@ -1,16 +1,17 @@
 """
-Pruebas de reproducibilidad estricta para modelos y pipelines del proyecto MiBici.
+Pruebas de reproducibilidad para modelos y pipelines del proyecto MiBici.
 ===================================================================================
 Verifica que las ejecuciones de modelado con semillas fijas produzcan
 predicciones, probabilidades y métricas de evaluación idénticas:
 1. Modelo base sintético (LightGBM).
 2. Pipeline de riesgo operativo (Pregunta 2: LightGBM multiclase con datos reales).
-3. Pipeline de segmentación de estaciones (Pregunta 3: GMM / clustering con datos reales).
+3. GMM de P3: Parquet local cuando existe; fixture sintética identificada en JUnit en otro caso.
 """
 
-from lightgbm import LGBMClassifier
 import numpy as np
 import pandas as pd
+import pytest
+from lightgbm import LGBMClassifier
 from sklearn.datasets import make_classification
 from sklearn.metrics import (
     balanced_accuracy_score,
@@ -24,6 +25,7 @@ from sklearn.preprocessing import StandardScaler
 
 from src.config import PROCESSED_DATA_DIR, RANDOM_SEED
 from src.features.features import METADATA_COLS
+from src.features.p2_features import get_train_test_data
 from src.p2_config import LGBM_PARAMS, P2_FEATURES_TARGET_PARQUET
 
 
@@ -69,31 +71,25 @@ def test_p2_pipeline_reproducibility_on_real_data():
     sobre una muestra del dataset real deben generar predicciones, probabilidades
     y métricas idénticas (F1 macro y Balanced Accuracy).
     """
-    if P2_FEATURES_TARGET_PARQUET.exists():
-        df = pd.read_parquet(P2_FEATURES_TARGET_PARQUET).head(1500)
-        drop_cols = [
-            "timestamp",
-            "station_id",
-            "target",
-            "risk_ratio",
-            "net_flow_target",
-        ]
-        feature_cols = [
-            c
-            for c in df.columns
-            if c not in drop_cols and pd.api.types.is_numeric_dtype(df[c])
-        ]
-        X = df[feature_cols]
-        y = df["target"].astype(int)
-    else:
-        # Fallback en caso de ejecución en entorno de integración continua sin datos crudos
-        X, y = make_classification(
-            n_samples=1000,
-            n_features=12,
-            n_informative=8,
-            n_classes=3,
-            random_state=RANDOM_SEED,
+    if not P2_FEATURES_TARGET_PARQUET.exists():
+        pytest.skip("P2 real requiere el Parquet generado con make data")
+    X_train, y_train, X_test, y_test, _, _ = get_train_test_data()
+
+    # Incluir las tres clases y evaluar en Test, sin variables futuras ni target=-1.
+    def sample_indices(labels, per_class):
+        return np.concatenate(
+            [
+                group.sample(
+                    n=min(per_class, len(group)), random_state=RANDOM_SEED
+                ).index
+                for _, group in labels.groupby(labels)
+            ]
         )
+
+    train_indices = sample_indices(y_train, 500)
+    test_indices = sample_indices(y_test, 200)
+    X, y = X_train.loc[train_indices], y_train.loc[train_indices]
+    X_eval, y_eval = X_test.loc[test_indices], y_test.loc[test_indices]
 
     # Hiperparámetros representativos de P2 con semilla fija
     params = {
@@ -110,10 +106,10 @@ def test_p2_pipeline_reproducibility_on_real_data():
     clf2.fit(X, y)
 
     # Predicciones de clase y probabilidades
-    preds1 = clf1.predict(X)
-    preds2 = clf2.predict(X)
-    probs1 = clf1.predict_proba(X)
-    probs2 = clf2.predict_proba(X)
+    preds1 = clf1.predict(X_eval)
+    preds2 = clf2.predict(X_eval)
+    probs1 = clf1.predict_proba(X_eval)
+    probs2 = clf2.predict_proba(X_eval)
 
     assert np.array_equal(preds1, preds2), (
         "Las predicciones de clase difieren entre ejecuciones"
@@ -123,10 +119,10 @@ def test_p2_pipeline_reproducibility_on_real_data():
     )
 
     # Consistencia exacta de métricas clave de evaluación
-    f1_m1 = f1_score(y, preds1, average="macro")
-    f1_m2 = f1_score(y, preds2, average="macro")
-    bal_acc1 = balanced_accuracy_score(y, preds1)
-    bal_acc2 = balanced_accuracy_score(y, preds2)
+    f1_m1 = f1_score(y_eval, preds1, average="macro")
+    f1_m2 = f1_score(y_eval, preds2, average="macro")
+    bal_acc1 = balanced_accuracy_score(y_eval, preds1)
+    bal_acc2 = balanced_accuracy_score(y_eval, preds2)
 
     assert f1_m1 == f1_m2, f"Discrepancia en F1 macro: {f1_m1} != {f1_m2}"
     assert bal_acc1 == bal_acc2, (
@@ -134,7 +130,7 @@ def test_p2_pipeline_reproducibility_on_real_data():
     )
 
 
-def test_p3_clustering_pipeline_reproducibility_on_real_data():
+def test_p3_clustering_reproducibility(record_property):
     """Verifica la reproducibilidad del pipeline de la Pregunta 3 (Clustering de estaciones).
 
     Dos ajustes del pipeline Champion (StandardScaler + GaussianMixture) sobre el perfil
@@ -143,6 +139,10 @@ def test_p3_clustering_pipeline_reproducibility_on_real_data():
     """
     hourly_parquet = PROCESSED_DATA_DIR / "estaciones_caracteristicas_hourly.parquet"
 
+    record_property(
+        "data_source",
+        "real_parquet" if hourly_parquet.exists() else "synthetic_fixture",
+    )
     if hourly_parquet.exists():
         df = pd.read_parquet(hourly_parquet)
         feature_cols = [
