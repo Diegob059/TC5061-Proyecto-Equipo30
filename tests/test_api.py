@@ -89,3 +89,34 @@ def test_predict_rejects_missing_features(api_client):
 
     assert response.status_code == 422
     assert not model.called
+
+
+def test_root_endpoint_returns_ok_and_model_name(api_client):
+    client, _ = api_client
+    response = client.get("/")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "model" in data
+
+
+def test_health_endpoint_returns_healthy(api_client):
+    client, _ = api_client
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "version" in data
+
+
+def test_model_info_endpoint_returns_metadata(api_client):
+    client, _ = api_client
+    response = client.get("/model-info")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["alias"] == "champion"
+    assert "model_name" in data
+    assert "prediction_horizon" in data
