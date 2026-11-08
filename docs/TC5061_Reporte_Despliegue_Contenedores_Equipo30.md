@@ -18,12 +18,12 @@
 
 ## 1. Integrantes del Equipo (Equipo 30)
 
-| Nombre del Integrante | Matrícula | Rol en el Proyecto |
-| :--- | :--- | :--- |
-| **Ricardo Bahamón** | A01840023 | MLOps, Pipeline Engineer & Deployment (API, Dockerfile, Makefile, Verificación) |
-| **Diego Becerril** | A01748115 | Lead Data Scientist & Modeling (Formulación de Target, LightGBM, Pydantic Schema) |
-| **Gregorio Escobedo Straffon** | A01840612 | Data Engineer & Quality QA (Ingesta Parquet, DeepChecks, Regresión) |
-| **Freddin Alcántara** | A01797741 | Product & Deployment Lead (Requisitos Operativos CCO, ML Canvas, API Base) |
+| Nombre del Integrante | Matrícula |
+| :--- | :--- |
+| **Ricardo Bahamón** | A01840023 |
+| **Diego Becerril** | A01748115 |
+| **Gregorio Escobedo Straffon** | A01840612 |
+| **Freddin Alcántara** | A01797741 |
 
 ---
 
