@@ -33,23 +33,37 @@ El proyecto aborda tres preguntas estratégicas:
 TC5061-Proyecto-Equipo30/
 ├── MLproject                 <- Define los entry points `ingest`/`train` para `mlflow run` (ver sección 6).
 ├── python_env.yaml           <- Entorno declarado para el MLproject (Python 3.12, referencia a requirements.txt).
-├── Makefile                  <- Comandos estándar de conveniencia y automatización (make mlflow, data_p1/p2/p3, train_p1/p2/p3...).
+├── Makefile                  <- Comandos estándar de automatización (mlflow, data, train, contenedores y tests).
 ├── requirements.txt          <- Dependencias con versiones fijadas para reproducibilidad.
+├── requirements-api.txt      <- Dependencias aisladas mínimas para el microservicio de inferencia en contenedor.
 ├── setup.py                  <- Setup clásico de empaquetado pip editable (CCDS v1).
+├── Containerfile             <- Definición de contenedor OCI estándar (Podman).
+├── Dockerfile                <- Definición de contenedor OCI estándar con libgomp1 y HEALTHCHECK (Docker).
+├── api/                      <- Microservicio REST para inferencia en tiempo real (Semana 8).
+│   ├── main.py               <- Aplicación FastAPI, endpoints (/health, /model-info, /predict) y esquemas Pydantic v2.
+│   └── model_loader.py       <- Carga desacoplada del modelo @champion desde MLflow Model Registry.
 ├── scripts/
 │   ├── ingest.py             <- Entry point `ingest` del MLproject (despacha a p1/p2/p3/all).
 │   ├── train.py              <- Entry point `train` del MLproject (pregunta + modelo + hiperparámetros).
 │   ├── run_deepchecks.py     <- Validación de calidad, integridad y deriva de datos con DeepChecks.
+│   ├── verify_container_api.py <- Verificación automatizada de salud, latencia y endpoints de la API en contenedor.
+│   ├── generate_week8_report.py <- Generador automatizado de reportes oficiales (DOCX, Markdown, PDF).
 │   └── ejecutar_notebook_p1.py <- Helper para re-ejecutar el notebook de P1 y dejar sus gráficas actualizadas.
 ├── data/
 │   ├── external/             <- Datos externos complementarios (metadatos de clima o API).
 │   ├── raw/                  <- Datos crudos inmutables (CSVs de Viajes y Nomenclatura 2025-2026).
 │   ├── interim/               <- Datos limpios en Parquet (viajes_limpios.parquet, estaciones.parquet, flujos horarios P1).
 │   └── processed/            <- Datasets finales para modelado: features y predicciones de P1, P2 y P3.
-├── docs/                     <- Documentación del proyecto, Getting Started, ML Canvas y guías por pregunta.
+├── docs/                     <- Documentación del proyecto, Getting Started, ML Canvas y reportes entregables.
 │   ├── getting-started.md    <- Guía de configuración y reproducción paso a paso.
 │   ├── p1-inventario-inicial.md <- Guía detallada de P1 (entorno, particiones temporales, corridas de MLflow).
-│   └── Machine Learning Canvas (v1.2).docx <- Canvas oficial del equipo.
+│   ├── Machine Learning Canvas (v1.2).docx <- Canvas oficial del equipo.
+│   ├── TC5061_Reporte_Despliegue_Contenedores_Equipo30.docx <- Reporte oficial Semana 8 (Word).
+│   ├── TC5061_Reporte_Despliegue_Contenedores_Equipo30.pdf  <- Reporte oficial Semana 8 (PDF).
+│   ├── TC5061_Reporte_Despliegue_Contenedores_Equipo30.md   <- Reporte oficial Semana 8 (Markdown).
+│   ├── TC5061_Reporte_Testing_Seguridad_Equipo30.pdf       <- Reporte oficial Semana 7 (Testing y Seguridad).
+│   ├── TC5061_Reporte_MLFlow_Equipo30.pdf                  <- Reporte oficial Semana 6 (MLflow).
+│   └── TC5061_Propuesta_Proyecto_Equipo30.pdf              <- Propuesta técnica inicial del proyecto.
 ├── notebooks/                <- Convención `1.x-iniciales-descripcion.ipynb`.
 │   ├── 1.0-rb-p2-riesgo-estaciones.ipynb       <- Exploración y blueprint analítico de P2.
 │   ├── 1.0-db-clustering-estaciones.ipynb      <- EDA de clustering de estaciones de P3.
@@ -76,7 +90,9 @@ TC5061-Proyecto-Equipo30/
 │       └── p1_plots.py / p2_plots.py / p3_plots.py <- Diagnósticos visuales por pregunta.
 ├── models/                   <- Modelos serializados entrenados (`*.joblib`, `*.pkl`); no se versionan en Git.
 ├── reports/
-│   ├── figures/               <- Figuras diagnósticas generadas (p1_*, p2_*, p3_*, semana7_*).
+│   ├── figures/               <- Figuras diagnósticas generadas (p1_*, p2_*, p3_*, semana7_*, semana8_*).
+│   │   └── semana8_api_container_evidence.png <- Captura de evidencia del microservicio y contenedor activo.
+│   ├── container_verification.json <- Resultados estructurados de la suite de verificación de la API (Semana 8).
 │   ├── deepchecks_data_integrity.html <- Reporte HTML de integridad de datos generado por DeepChecks.
 │   ├── deepchecks_data_drift.html     <- Reporte HTML de deriva de datos (train 2025 vs test 2026).
 │   ├── deepchecks_summary.json        <- Resumen auditable estructurado de validación de datos.
@@ -85,6 +101,7 @@ TC5061-Proyecto-Equipo30/
 │   ├── data_manifest.json / p1_data_manifest.json / p2_data_manifest.json <- Manifiestos criptográficos (SHA-256) de versionado de datos.
 │   └── *_ml_canvas.md / architecture_diagram.md <- Machine Learning Canvas y diagramas de arquitectura.
 ├── tests/
+│   ├── test_api.py                                       <- Pruebas unitarias de la API REST, esquemas y endpoints.
 │   ├── test_data.py / test_dataset.py / test_features.py <- Pruebas unitarias compartidas.
 │   ├── test_p1_experiments.py                            <- Pruebas unitarias de P1.
 │   ├── test_p2_data.py / test_p2_features.py / test_p2_train.py <- Pruebas unitarias de P2.
@@ -607,6 +624,22 @@ A continuación se presenta la evidencia de la API REST respondiendo a una petic
 
 Evidencia auditable disponible en: [reporte de verificación JSON](reports/container_verification.json).
 
+### 8.6 Documentación y Reportes Oficiales (Semana 8)
+
+Para cumplir con la entrega institucional del curso y las directrices de documentación técnica del Tecnológico de Monterrey, el equipo consolidó el reporte de despliegue en múltiples formatos:
+
+* 📄 **Reporte Word (.docx):** [docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.docx](docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.docx)
+* 📕 **Reporte PDF (.pdf):** [docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.pdf](docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.pdf)
+* 📝 **Reporte Markdown (.md):** [docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.md](docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.md)
+* ⚙️ **Script de Generación Automatizada:** [scripts/generate_week8_report.py](scripts/generate_week8_report.py)
+
+#### Síntesis de Contenidos del Reporte:
+1. **Recuperación Dinámica:** Desacoplamiento de la imagen OCI y el modelo mediante `MLFLOW_TRACKING_URI` y alias `@champion` (`models:/mibici-equipo30-p2-riesgo@champion`).
+2. **Validación Estricta:** Esquema Pydantic v2 con 17 variables físicas, validaciones de dominio y rechazo estricto `extra="forbid"`.
+3. **Contenerización OCI:** Construcción sobre `python:3.12-slim` con soporte de runtime OpenMP (`libgomp1`) para LightGBM y `HEALTHCHECK` activo en `/health`.
+4. **Verificación en Vivo:** 62 pruebas unitarias pasando al 100% y sondeo automatizado con latencia media de **5.02 ms**.
+5. **Justificación Teórica:** Adopción de inferencia online en tiempo real para anticipar desabasto/saturación ante eventos imprevistos, combinada con inferencia batch para inventario inicial y segmentación.
+
 ---
 
 ## 🌿 9. Flujo de Trabajo con Git y GitHub (GitHub Flow)
@@ -638,16 +671,30 @@ Se adopta el estándar de [Conventional Commits](https://www.conventionalcommits
 * **Revisión Obligatoria:** Cada integrante debe realizar al menos una revisión formal (*Code Review*) con comentarios técnicos y aprobación explícita (*Approved*) a otro compañero antes de realizar el merge hacia `main`.
 * **Fusión:** Se utiliza *Squash and Merge* o *Merge Commit* manteniendo un historial limpio y auditable.
 
+### 9.5 Trazabilidad de Pull Requests de la Semana 8 (Despliegue Contenerizado)
+
+La implementación, documentación y entrega de la Semana 8 se gestionó mediante ramas de trabajo temáticas y Pull Requests formales integrados a `main`:
+
+| PR | Rama | Tipo | Descripción y Alcance | Autor / Revisor |
+| :---: | :--- | :---: | :--- | :--- |
+| **#34** | `fix/api-schema-validation-and-endpoints` | `fix` | Casting explícito de tipos para compatibilidad estricta con el esquema de MLflow (`int32` y `float32`), carga con fallback de entorno y adición de endpoints `/health` y `/model-info`. | Ricardo Bahamón |
+| **#35** | `feat/dockerfile-and-container-tooling` | `feat` | Estandarización de `Dockerfile` y `Containerfile` bajo OCI, dependencias nativas (`libgomp1`), `HEALTHCHECK` y targets de ciclo de vida en `Makefile`. | Ricardo Bahamón |
+| **#36** | `docs/container-deployment-guide` | `docs` | Documentación de la Sección 8 en `README.md`, diagrama ASCII de arquitectura, ejemplos `curl`, matriz operativa y justificación teórica. | Ricardo Bahamón |
+| **#37** | `test/container-verification-evidence` | `test` | Script de verificación en vivo `scripts/verify_container_api.py`, reporte estructurado `container_verification.json` y figura de evidencia visual. | Ricardo Bahamón |
+| **#38** | `fix/add-dotenv-to-api-requirements` | `fix` | Inclusión de `python-dotenv==1.2.4` en `requirements-api.txt` y blindaje de importación condicional en `api/model_loader.py`. | Ricardo Bahamón |
+| **#39** | `docs/add-week8-technical-report` | `docs` | Creación y compilación de los reportes académicos formales (`.docx`, `.pdf`, `.md`) y script generador para la entrega de la Semana 8. | Ricardo Bahamón |
+| **#40** | `docs/readme-week8-comprehensive-update` | `docs` | Actualización integral del `README.md` con árbol de archivos completo, trazabilidad de PRs y enlaces a reportes oficiales. | Ricardo Bahamón |
+
 ---
 
 ## 👥 10. Integrantes del Equipo y Roles (Equipo 30)
 
-| Integrante | Rol en el Proyecto | Responsabilidades Principales |
-|---|---|---|
-| **Ricardo Bahamón** | **MLOps & Pipeline Engineer** | Arquitectura del pipeline reproducible, orquestación de ingesta Parquet, configuración de MLflow, tracking de artefactos, pruebas de reproducibilidad, validación de datos con DeepChecks, y despliegue contenerizado de la API REST con FastAPI y Docker/Podman. |
-| **Diego Becerril** | **Lead Data Scientist & Modeling** | Formulación matemática del target de riesgo, ingeniería de variables de series de tiempo (lags/rollings), calibración de LightGBM y chequeos básicos de seguridad (Bandit/pip-audit). |
-| **Gregorio Escobedo** | **Data Engineer & Quality QA** | Scraping dinámico resiliente, saneamiento de catálogos geoespaciales, validación de integridad criptográfica (SHA-256), alineación de DeepChecks con el entrenamiento de P2 y pruebas de regresión de calidad. |
-| **Freddin Alcantara** | **Product & Deployment Lead** | Elaboración del ML Canvas, especificación de requisitos operativos del CCO, diseño de diagnósticos visuales y documentación técnica. |
+| Integrante | Matrícula | Rol en el Proyecto | Responsabilidades Principales |
+|---|---|---|---|
+| **Ricardo Bahamón** | A01840023 | **MLOps & Pipeline Engineer** | Arquitectura del pipeline reproducible, orquestación de ingesta Parquet, configuración de MLflow, tracking de artefactos, pruebas de reproducibilidad, validación de datos con DeepChecks, y despliegue contenerizado de la API REST con FastAPI y Docker/Podman. |
+| **Diego Becerril** | A01748115 | **Lead Data Scientist & Modeling** | Formulación matemática del target de riesgo, ingeniería de variables de series de tiempo (lags/rollings), calibración de LightGBM y chequeos básicos de seguridad (Bandit/pip-audit). |
+| **Gregorio Escobedo** | A01840612 | **Data Engineer & Quality QA** | Scraping dinámico resiliente, saneamiento de catálogos geoespaciales, validación de integridad criptográfica (SHA-256), alineación de DeepChecks con el entrenamiento de P2 y pruebas de regresión de calidad. |
+| **Freddin Alcantara** | A01797741 | **Product & Deployment Lead** | Elaboración del ML Canvas, especificación de requisitos operativos del CCO, diseño de diagnósticos visuales y documentación técnica. |
 
 ---
 
