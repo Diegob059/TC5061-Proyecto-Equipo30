@@ -31,6 +31,9 @@ pip-audit==2.10.1
 # cryptography/fastmcp/pyarrow, que mlflow 3.5.0 limita por debajo de sus versiones
 # corregidas; requieren actualizar mlflow primero, ver hallazgos de seguridad).
 pyasn1==0.6.5
+# DeepChecks importa pkg_resources: setuptools>=81 no es compatible.
+# La deuda de seguridad de esta compatibilidad se documenta en README, sección 7.
+setuptools==80.10.2
 deepchecks==0.19.1
 anywidget==0.11.0
 fastapi
