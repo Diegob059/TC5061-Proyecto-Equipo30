@@ -4,10 +4,14 @@ import os
 from typing import Any
 
 import mlflow
-from dotenv import load_dotenv
 
-# Carga variables locales (.env) si existen; en contenedores se leen de variables de entorno
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+
+    # Carga variables locales (.env) si existen; en contenedores se leen de variables de entorno
+    load_dotenv()
+except ImportError:
+    pass
 
 MODEL_URI = os.getenv("MODEL_URI", "models:/mibici-equipo30-p2-riesgo@champion")
 
