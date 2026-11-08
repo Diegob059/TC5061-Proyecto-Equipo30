@@ -126,3 +126,39 @@ data_p1:
 .PHONY: train_p1
 train_p1:
 	$(PYTHON_INTERPRETER) -m src.models.p1_train
+
+#################################################################################
+# CONTAINERIZATION & API (WEEK 8)                                               #
+#################################################################################
+
+CONTAINER_ENGINE ?= $(shell which docker 2>/dev/null || which podman 2>/dev/null || echo docker)
+IMAGE_NAME = mibici-risk-api:latest
+CONTAINER_NAME = mibici-risk-service
+
+## Build API container image using Docker or Podman
+.PHONY: build_container
+build_container:
+	$(CONTAINER_ENGINE) build -t $(IMAGE_NAME) -f Containerfile .
+
+## Run API container locally connecting to MLflow tracking server
+.PHONY: run_container
+run_container:
+	$(CONTAINER_ENGINE) run -d --name $(CONTAINER_NAME) -p 8000:8000 \
+		-e MLFLOW_TRACKING_URI=http://host.docker.internal:5001 \
+		$(IMAGE_NAME)
+
+## Stop and remove running API container
+.PHONY: stop_container
+stop_container:
+	-$(CONTAINER_ENGINE) stop $(CONTAINER_NAME)
+	-$(CONTAINER_ENGINE) rm $(CONTAINER_NAME)
+
+## Test API endpoints running on port 8000
+.PHONY: test_api_live
+test_api_live:
+	curl -s http://127.0.0.1:8000/health
+	@echo ""
+	curl -s -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" \
+		-d '{"capacity":20,"latitude":20.67,"longitude":-103.35,"salidas_lag_1":1,"llegadas_lag_1":2,"salidas_lag_2":1,"llegadas_lag_2":2,"salidas_lag_24":3,"llegadas_lag_24":4,"salidas_lag_168":5,"llegadas_lag_168":6,"balance_rolling_3h":-1.5,"balance_rolling_12h":0.5,"sin_hour":0.5,"cos_hour":0.866,"sin_dow":-0.5,"cos_dow":0.866}'
+	@echo ""
+
