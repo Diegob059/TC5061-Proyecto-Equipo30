@@ -1,0 +1,98 @@
+{
+  "timestamp_utc": "2026-11-08T21:21:37.864544+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "tests": [
+    {
+      "name": "Endpoint Raiz (GET /)",
+      "endpoint": "/",
+      "method": "GET",
+      "status_code": 200,
+      "expected_code": 200,
+      "latency_ms": 7.56,
+      "passed": true,
+      "response": {
+        "status": "ok",
+        "model": "mibici-equipo30-p2-riesgo"
+      }
+    },
+    {
+      "name": "Health Check (GET /health)",
+      "endpoint": "/health",
+      "method": "GET",
+      "status_code": 200,
+      "expected_code": 200,
+      "latency_ms": 1.12,
+      "passed": true,
+      "response": {
+        "status": "healthy",
+        "service": "MiBici Risk API",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "name": "Metadatos del Modelo (GET /model-info)",
+      "endpoint": "/model-info",
+      "method": "GET",
+      "status_code": 200,
+      "expected_code": 200,
+      "latency_ms": 0.93,
+      "passed": true,
+      "response": {
+        "model_uri": "models:/mibici-equipo30-p2-riesgo@champion",
+        "model_name": "mibici-equipo30-p2-riesgo",
+        "alias": "champion",
+        "tracking_uri": "http://127.0.0.1:5001",
+        "task": "Multiclass Station Risk Classification (0: Normal, 1: Desabasto, 2: Saturacion)",
+        "prediction_horizon": "2 horas"
+      }
+    },
+    {
+      "name": "Inferencia Valida (POST /predict)",
+      "endpoint": "/predict",
+      "method": "POST",
+      "status_code": 200,
+      "expected_code": 200,
+      "latency_ms": 5.02,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20.0,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "response": {
+        "prediction": 0
+      }
+    },
+    {
+      "name": "Validacion Pydantic gt=0 (POST /predict)",
+      "endpoint": "/predict",
+      "method": "POST",
+      "status_code": 422,
+      "expected_code": 422,
+      "passed": true
+    },
+    {
+      "name": "Validacion extra='forbid' (POST /predict)",
+      "endpoint": "/predict",
+      "method": "POST",
+      "status_code": 422,
+      "expected_code": 422,
+      "passed": true
+    }
+  ],
+  "overall_status": "PASS"
+}
