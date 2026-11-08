@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-11-08T21:21:37.864544+00:00",
+  "timestamp_utc": "2026-11-08T22:40:20.887866+00:00",
   "base_url": "http://127.0.0.1:8000",
   "tests": [
     {
@@ -8,7 +8,7 @@
       "method": "GET",
       "status_code": 200,
       "expected_code": 200,
-      "latency_ms": 7.56,
+      "latency_ms": 4.93,
       "passed": true,
       "response": {
         "status": "ok",
@@ -21,7 +21,7 @@
       "method": "GET",
       "status_code": 200,
       "expected_code": 200,
-      "latency_ms": 1.12,
+      "latency_ms": 0.94,
       "passed": true,
       "response": {
         "status": "healthy",
@@ -35,7 +35,7 @@
       "method": "GET",
       "status_code": 200,
       "expected_code": 200,
-      "latency_ms": 0.93,
+      "latency_ms": 0.88,
       "passed": true,
       "response": {
         "model_uri": "models:/mibici-equipo30-p2-riesgo@champion",
@@ -52,7 +52,7 @@
       "method": "POST",
       "status_code": 200,
       "expected_code": 200,
-      "latency_ms": 5.02,
+      "latency_ms": 3.26,
       "passed": true,
       "request_payload": {
         "capacity": 20.0,
