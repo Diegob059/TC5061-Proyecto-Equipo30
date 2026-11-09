@@ -55,6 +55,7 @@ def test_make_uses_same_mlflow_port_for_server_and_container(port):
             "make",
             "-n",
             "mlflow",
+            "build_container",
             "run_container",
             f"MLFLOW_PORT={port}",
             "CONTAINER_ENGINE=podman",
@@ -64,6 +65,7 @@ def test_make_uses_same_mlflow_port_for_server_and_container(port):
         check=True,
     )
     assert f"--port {port}" in result.stdout
+    assert "build --format=docker" in result.stdout
     assert (
         f"MLFLOW_TRACKING_URI=http://host.containers.internal:{port}" in result.stdout
     )

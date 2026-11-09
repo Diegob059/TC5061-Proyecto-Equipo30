@@ -140,6 +140,7 @@ CONTAINER_ENGINE ?= $(shell which docker 2>/dev/null || which podman 2>/dev/null
 IMAGE_NAME = mibici-risk-api:latest
 CONTAINER_NAME = mibici-risk-service
 CONTAINER_HOST = $(if $(findstring podman,$(CONTAINER_ENGINE)),host.containers.internal,host.docker.internal)
+CONTAINER_BUILD_FLAGS = $(if $(findstring podman,$(CONTAINER_ENGINE)),--format=docker,)
 CONTAINER_TRACKING_URI ?= http://$(CONTAINER_HOST):$(MLFLOW_PORT)
 CONTAINER_HOST_ARGS = $(if $(and $(filter Linux,$(shell uname -s)),$(findstring docker,$(CONTAINER_ENGINE))),--add-host=host.docker.internal:host-gateway,)
 MODEL_URI ?= models:/mibici-equipo30-p2-riesgo@champion
@@ -148,7 +149,7 @@ API_BASE_URL ?= http://127.0.0.1:8000
 ## Build API container image using Docker or Podman
 .PHONY: build_container
 build_container:
-	$(CONTAINER_ENGINE) build -t $(IMAGE_NAME) -f Containerfile .
+	$(CONTAINER_ENGINE) build $(CONTAINER_BUILD_FLAGS) -t $(IMAGE_NAME) -f Containerfile .
 
 ## Run API container locally connecting to MLflow tracking server
 .PHONY: run_container
