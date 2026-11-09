@@ -1,0 +1,359 @@
+{
+  "timestamp_utc": "2026-11-09T01:12:12.072052+00:00",
+  "base_url": "http://127.0.0.1:8002",
+  "evidence_scope": "http_only",
+  "tests": [
+    {
+      "name": "Raíz",
+      "endpoint": "/",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "status": "ok",
+        "model": "mibici-equipo30-p2-riesgo"
+      },
+      "latency_ms": 12.668
+    },
+    {
+      "name": "Salud",
+      "endpoint": "/health",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "status": "healthy",
+        "service": "MiBici Risk API",
+        "version": "1.0.0"
+      },
+      "latency_ms": 1.514
+    },
+    {
+      "name": "Configuración del modelo",
+      "endpoint": "/model-info",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "model_uri": "models:/mibici-equipo30-p2-riesgo@champion",
+        "model_name": "mibici-equipo30-p2-riesgo",
+        "alias": "champion",
+        "tracking_uri": "http://127.0.0.1:5001",
+        "task": "Multiclass Station Risk Classification (0: Normal, 1: Desabasto, 2: Saturacion)",
+        "prediction_horizon": "2 horas"
+      },
+      "latency_ms": 1.01
+    },
+    {
+      "name": "Predicción",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 200,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 200,
+      "response": {
+        "prediction": 0
+      },
+      "latency_ms": 4.725
+    },
+    {
+      "name": "Capacidad cero",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 0,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "greater_than",
+            "loc": [
+              "body",
+              "capacity"
+            ],
+            "msg": "Input should be greater than 0",
+            "input": 0,
+            "ctx": {
+              "gt": 0
+            }
+          }
+        ]
+      },
+      "latency_ms": 1.022
+    },
+    {
+      "name": "Capacidad fraccionaria",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 0.5,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "int_from_float",
+            "loc": [
+              "body",
+              "capacity"
+            ],
+            "msg": "Input should be a valid integer, got a number with a fractional part",
+            "input": 0.5
+          }
+        ]
+      },
+      "latency_ms": 0.773
+    },
+    {
+      "name": "Capacidad fuera de int32",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 2147483648,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "less_than_equal",
+            "loc": [
+              "body",
+              "capacity"
+            ],
+            "msg": "Input should be less than or equal to 2147483647",
+            "input": 2147483648,
+            "ctx": {
+              "le": 2147483647
+            }
+          }
+        ]
+      },
+      "latency_ms": 0.792
+    },
+    {
+      "name": "Valor fuera de float32",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1e+39,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "value_error",
+            "loc": [
+              "body",
+              "salidas_lag_1"
+            ],
+            "msg": "Value error, El valor excede el rango float32 del modelo",
+            "input": 1e+39,
+            "ctx": {
+              "error": {}
+            }
+          }
+        ]
+      },
+      "latency_ms": 0.83
+    },
+    {
+      "name": "Campo extra",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866,
+        "campo_desconocido": 1
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "extra_forbidden",
+            "loc": [
+              "body",
+              "campo_desconocido"
+            ],
+            "msg": "Extra inputs are not permitted",
+            "input": 1
+          }
+        ]
+      },
+      "latency_ms": 0.918
+    },
+    {
+      "name": "Campo faltante",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "salidas_lag_168"
+            ],
+            "msg": "Field required",
+            "input": {
+              "capacity": 20,
+              "latitude": 20.67,
+              "longitude": -103.35,
+              "salidas_lag_1": 1.0,
+              "llegadas_lag_1": 2.0,
+              "salidas_lag_2": 1.0,
+              "llegadas_lag_2": 2.0,
+              "salidas_lag_24": 3.0,
+              "llegadas_lag_24": 4.0,
+              "llegadas_lag_168": 6.0,
+              "balance_rolling_3h": -1.5,
+              "balance_rolling_12h": 0.5,
+              "sin_hour": 0.5,
+              "cos_hour": 0.866,
+              "sin_dow": -0.5,
+              "cos_dow": 0.866
+            }
+          }
+        ]
+      },
+      "latency_ms": 0.884
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "total": 10
+  },
+  "overall_status": "PASS"
+}

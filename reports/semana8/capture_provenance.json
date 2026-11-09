@@ -1,0 +1,7 @@
+{
+  "captured_at_utc": "2026-11-09T01:25:36.577349+00:00",
+  "source_url": "http://127.0.0.1:8000/docs#/Inference/predict_predict_post",
+  "method": "Captura directa de Chrome tras ejecutar POST /predict en Swagger UI. No se modificaron los píxeles.",
+  "sha256": "5052b95ec72575d1477899ee613261d65a03d52df27e546161df673d5f92eae5",
+  "container_verification": "reports/container_verification.json"
+}

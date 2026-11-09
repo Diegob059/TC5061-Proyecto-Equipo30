@@ -28,3 +28,7 @@ fingerprints:
     date: '2026-11-09'
     commit: 7c7448388fac89055e9f0f73784530293a73e5ca with uncommitted API and verifier corrections
     cli: '1.75.0'
+  - id: serving-correction-verified
+    date: '2026-11-09'
+    commit: 2ea2615; source and test hashes preserved in reports/semana8/execution.json
+    cli: '1.75.0'

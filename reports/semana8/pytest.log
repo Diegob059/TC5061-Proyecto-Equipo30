@@ -1,0 +1,40 @@
+........................................................................ [ 96%]
+...                                                                      [100%]
+=============================== warnings summary ===============================
+../../../../../private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+../../../../../private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/deepchecks/core/serialization/dataframe/html.py:16
+  /private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/deepchecks/core/serialization/dataframe/html.py:16: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import parse_version
+
+tests/test_data_deepchecks.py::test_integrity_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_integrity_suite_detects_duplicate_rows
+tests/test_data_deepchecks.py::test_html_report_replaces_requested_path_without_numbered_copies
+  /private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/deepchecks/tabular/suite.py:117: DeprecationWarning: the `interpolation=` argument to quantile was renamed to `method=`, which has additional options.
+  Users of the modes 'nearest', 'lower', 'higher', or 'midpoint' are encouraged to review the method they used. (Deprecated NumPy 1.22)
+    check_result = check.run_logic(context, dataset_kind=DatasetKind.TRAIN)
+
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+  /private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/deepchecks/tabular/checks/train_test_validation/train_test_samples_mix.py:85: FutureWarning: DataFrame.applymap has been deprecated. Use DataFrame.map instead.
+    duplicates_df = duplicates_df.applymap(lambda x: None if x == NAN_REPLACEMENT else x)
+
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_really_passes_on_clean_fixture
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+tests/test_data_deepchecks.py::test_temporal_suite_detects_drift
+  /private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/sklearn/utils/_tags.py:338: DeprecationWarning: The following error was raised: 'MyModelWrapper' object has no attribute '__sklearn_tags__'. It seems that there are no classes that implement `__sklearn_tags__` in the MRO and/or all classes in the MRO call `super().__sklearn_tags__()`. Make sure to inherit from `BaseEstimator` which implements `__sklearn_tags__` (or alternatively define `__sklearn_tags__` but we don't recommend this approach). Note that `BaseEstimator` needs to be on the right side of other Mixins in the inheritance order. The default are now used instead since retrieving tags failed. This warning will be replaced by an error in 1.8.
+    warnings.warn(
+
+tests/test_data_deepchecks.py::test_integrity_suite_detects_duplicate_rows
+  /private/tmp/equipo30-semana8-env/lib/python3.12/site-packages/deepchecks/tabular/dataset.py:236: UserWarning: Dataframe index has duplicate indexes, setting index to [0,1..,n-1].
+    warnings.warn('Dataframe index has duplicate indexes, setting index to [0,1..,n-1].')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+75 passed, 16 warnings in 11.12s

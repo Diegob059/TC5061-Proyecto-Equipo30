@@ -1,0 +1,297 @@
+{
+  "timestamp_utc": "2026-11-09T01:06:11.541414+00:00",
+  "base_url": "http://localhost:4018/api",
+  "evidence_scope": "http_only",
+  "tests": [
+    {
+      "name": "Raíz",
+      "endpoint": "/",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "status": "ok",
+        "model": "mibici-equipo30-p2-riesgo"
+      },
+      "latency_ms": 12.781
+    },
+    {
+      "name": "Salud",
+      "endpoint": "/health",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "status": "healthy",
+        "version": "1.0.0"
+      },
+      "latency_ms": 1.815
+    },
+    {
+      "name": "Configuración del modelo",
+      "endpoint": "/model-info",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": true,
+      "status_code": 200,
+      "response": {
+        "model_uri": "models:/mibici-equipo30-p2-riesgo@champion"
+      },
+      "latency_ms": 1.222
+    },
+    {
+      "name": "Predicción",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 200,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 200,
+      "response": {
+        "prediction": 2
+      },
+      "latency_ms": 1.715
+    },
+    {
+      "name": "Capacidad cero",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 0,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "validation_error",
+            "msg": "Entrada fuera del contrato"
+          }
+        ]
+      },
+      "latency_ms": 1.729
+    },
+    {
+      "name": "Capacidad fraccionaria",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 0.5,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "validation_error",
+            "msg": "Entrada fuera del contrato"
+          }
+        ]
+      },
+      "latency_ms": 1.479
+    },
+    {
+      "name": "Capacidad fuera de int32",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 2147483648,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "validation_error",
+            "msg": "Entrada fuera del contrato"
+          }
+        ]
+      },
+      "latency_ms": 1.207
+    },
+    {
+      "name": "Valor fuera de float32",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1e+39,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "validation_error",
+            "msg": "Entrada fuera del contrato"
+          }
+        ]
+      },
+      "latency_ms": 1.264
+    },
+    {
+      "name": "Campo extra",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866,
+        "campo_desconocido": 1
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "validation_error",
+            "msg": "Entrada fuera del contrato"
+          }
+        ]
+      },
+      "latency_ms": 1.366
+    },
+    {
+      "name": "Campo faltante",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": true,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 422,
+      "response": {
+        "detail": [
+          {
+            "type": "validation_error",
+            "msg": "Entrada fuera del contrato"
+          }
+        ]
+      },
+      "latency_ms": 1.223
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "total": 10
+  },
+  "overall_status": "PASS"
+}

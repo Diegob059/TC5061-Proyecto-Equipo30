@@ -1,118 +1,115 @@
-# TECNOLÓGICO DE MONTERREY
-## Maestría en Inteligencia Artificial Aplicada
-### TC5061 — Operaciones de Inteligencia Artificial (MLOps)
-**Entrega de Semana 8: Despliegue de Modelos de ML (FastAPI + Contenedores Docker / Podman)**
+# API REST y contenedores para MiBici
 
----
+Tecnológico de Monterrey. TC5061. Equipo 30. Verificación del 9 de noviembre de 2026.
 
-# Reporte Técnico y Ejecutivo: Empaquetado y Despliegue Contenerizado del Microservicio MiBici
+## 1 API y modelo registrado
 
-## Metadatos del Proyecto
+El proyecto MiBici expone el clasificador de riesgo de P2 mediante FastAPI. El endpoint recibe las 17 variables predictoras de una estación y devuelve una clase en JSON. La ejecución documentada verificó el servicio dentro de Podman y la recuperación del modelo desde MLflow Model Registry.
 
-| Campo | Valor |
-| :--- | :--- |
-| **Proyecto / Sistema:** | Plataforma de Inteligencia Operativa MiBici (Área Metropolitana de Guadalajara) |
-| **Repositorio Oficial GitHub:** | [https://github.com/Diegob059/TC5061-Proyecto-Equipo30](https://github.com/Diegob059/TC5061-Proyecto-Equipo30) |
-| **Microservicio Desplegado:** | FastAPI 0.162.0 + Uvicorn 0.54.0 \| Modelo: `mibici-equipo30-p2-riesgo@champion` |
-| **Fecha de Entrega:** | Noviembre de 2026 — Equipo 30 |
+Para esta verificación se reconstruyó localmente LightGBM con la configuración lgbm_profundo y 4,037,300 filas reales de Train, anteriores al corte 2025-12-31 22:00:00. La versión 1 se registró como mibici-equipo30-p2-riesgo con alias champion. Esta reconstrucción tiene su propio run; las métricas y artefactos históricos del equipo se conservan por separado.
 
-## 1. Integrantes del Equipo (Equipo 30)
+| Identificador | Valor verificado |
+|---|---|
+| Model URI | models:/mibici-equipo30-p2-riesgo@champion |
+| Run de validación | 6f794e488be34e3aa862c8b10d04d058 |
+| Datos procesados SHA256 | ec233a6298aedeaa6f79b6cbddae846393b56d74327ee673b708aa5f6d276bd4 |
 
-| Nombre del Integrante | Matrícula |
-| :--- | :--- |
-| **Ricardo Bahamón** | A01840023 |
-| **Diego Becerril** | A01748115 |
-| **Gregorio Escobedo Straffon** | A01840612 |
-| **Freddin Alcántara** | A01797741 |
+| Método | Endpoint | Función |
+|---|---|---|
+| GET | / | Estado básico y nombre del modelo |
+| GET | /health | Disponibilidad del servicio |
+| GET | /model-info | Configuración de carga del modelo |
+| POST | /predict | Clasificación de riesgo en JSON |
+| GET | /docs | Contrato OpenAPI y pruebas desde Swagger |
 
----
+capacity debe representar un entero positivo compatible con int32. Las demás variables se validan como valores finitos compatibles con float32, con límites para coordenadas, lags y codificaciones cíclicas. Se rechazan campos extra, faltantes y valores que perderían validez al convertir sus tipos. Las entradas inválidas devuelven HTTP 422 antes de invocar el modelo.
 
-## 2. Resumen Ejecutivo y Propósito del Microservicio
+## 2 Contenerización y estrategia de despliegue
 
-En esta actividad integradora, el Equipo 30 da el primer paso hacia la producción industrial del proyecto MiBici mediante el empaquetado de su modelo de predicción de riesgo operativo (**Pregunta 2**) como un servicio REST interactivo, portable y reproducible en cualquier entorno mediante contenedores OCI (Docker y Podman).
+Containerfile y Dockerfile utilizan Python 3.12 slim, libgomp1 y las versiones de requirements-api.txt. SQLAlchemy se fija a 2.0.44, compatible con MLflow 3.5.0 y con el entorno principal del proyecto. La construcción con Podman utiliza --format=docker para conservar HEALTHCHECK, que consulta /health cada 30 segundos.
 
-El microservicio expone el clasificador entrenado sobre más de **7.89 millones de viajes históricos**, permitiendo al Centro de Control Operativo (CCO) de MiBici anticipar condiciones de **desabasto** (vaciado) o **saturación** (llenado) en las 470 estaciones activas con un horizonte táctico de **2 horas**.
+Los siguientes comandos construyen y ejecutan el servicio con Podman. MLflow debe tener disponible el modelo registrado y servir sus artefactos por HTTP.
 
----
+```bash
+make mlflow MLFLOW_PORT=5001
+# En otra terminal con el entorno del proyecto activo
+make build_container CONTAINER_ENGINE=podman
+make run_container CONTAINER_ENGINE=podman MLFLOW_PORT=5001
+make test_api_live CONTAINER_ENGINE=podman
+```
 
-## 3. Recuperación del Modelo desde el Model Registry (MLflow)
+MLFLOW_PORT configura tanto el servidor como la dirección usada por el contenedor. Podman utiliza host.containers.internal; Docker utiliza host.docker.internal y el mapeo host-gateway en Linux. MODEL_URI permite elegir un alias o una versión.
 
-La integración del modelo en la API se realizó bajo un patrón desacoplado y gobernado (`api/model_loader.py`):
+| Medida | Evidencia de la ejecución |
+|---|---|
+| Motor | podman version 5.8.9 |
+| Imagen | localhost/mibici-risk-api:semana8 |
+| Tamaño local de la imagen | 918.6 MiB |
+| Contenedor | 514ff295be7ebfbd |
+| Estado observado | running con puerto 8000 publicado |
 
-* **Carga por Alias `@champion`:** Se recupera dinámicamente `models:/mibici-equipo30-p2-riesgo@champion`, resolviendo a la versión `lgbm_profundo` (Run ID: `4dcbff8784a348a19f087a0697896be7`), seleccionada por su óptimo balance F1 macro y recall en clases minoritarias.
-* **Configuración desacoplada (`MLFLOW_TRACKING_URI`):** Dentro del contenedor, la ubicación del Model Registry se inyecta mediante la variable de entorno `MLFLOW_TRACKING_URI` (apuntando a `http://host.containers.internal:5000` en Podman o `http://host.docker.internal:5001` en Docker bajo macOS para evitar colisión con AirPlay).
-* **Ventajas operativas:** La imagen OCI permanece inmutable y ligera (~350 MB). Si se promueve un nuevo modelo campeón en MLflow, no se requiere reconstruir la imagen ni reiniciar la infraestructura (Rollback y promoción sin downtime).
+P2 usa inferencia bajo demanda por HTTP porque el cliente puede solicitar una evaluación de riesgo por estación. P1 y P3 conservan sus comandos por lotes. El repositorio no configura una ejecución automática a una hora fija.
 
----
+El modelo se carga una sola vez al iniciar la API. Si cambia el alias champion, se reinicia el contenedor para cargar la nueva versión. No hace falta reconstruir la imagen mientras el contrato y las dependencias sigan siendo compatibles. Esta implementación no incluye recarga automática del modelo.
 
-## 4. Construcción de la API REST con FastAPI y Validación Pydantic v2
+## 3 Petición y verificación del servicio
 
-La API implementada en `api/main.py` está construida con FastAPI bajo el estándar OpenAPI 3.1 y servidor ASGI Uvicorn:
+La petición de prueba se envió a POST /predict con los siguientes datos:
 
-### Endpoints Disponibles
+```json
+{
+  "capacity": 20,
+  "latitude": 20.67,
+  "longitude": -103.35,
+  "salidas_lag_1": 1.0,
+  "llegadas_lag_1": 2.0,
+  "salidas_lag_2": 1.0,
+  "llegadas_lag_2": 2.0,
+  "salidas_lag_24": 3.0,
+  "llegadas_lag_24": 4.0,
+  "salidas_lag_168": 5.0,
+  "llegadas_lag_168": 6.0,
+  "balance_rolling_3h": -1.5,
+  "balance_rolling_12h": 0.5,
+  "sin_hour": 0.5,
+  "cos_hour": 0.866,
+  "sin_dow": -0.5,
+  "cos_dow": 0.866
+}
+```
 
-| Método | Endpoint | Propósito y Funcionalidad |
-| :--- | :--- | :--- |
-| `GET` | `/` | Comprobación básica de disponibilidad y nombre del modelo registrado. |
-| `GET` | `/health` | Health check operativo para orquestadores y balanceadores (HTTP 200). |
-| `GET` | `/model-info` | Metadatos detallados de linaje, alias, horizonte temporal (2h) y tracking URI. |
-| `POST` | `/predict` | Inferencia de clasificación de riesgo en tiempo real (0: Normal, 1: Desabasto, 2: Saturación). |
-| `GET` | `/docs` | Documentación interactiva Swagger UI con ejemplos reales de Guadalajara. |
+Respuesta observada con el modelo registrado:
 
-### Validación Robusta con Pydantic v2 (`PredictionInput`)
+```json
+{"prediction": 0}
+```
 
-* **Restricciones físicas:** `capacity > 0` (anclajes físicos), latitud `[-90, 90]`, longitud `[-180, 180]`, flujos históricos `>= 0`, senos y cosenos cíclicos `[-1, 1]`, y `allow_inf_nan=False`.
-* **Protección contra inyección (`extra="forbid"`):** Cualquier carga útil que contenga campos ajenos a las 17 variables predictoras del modelo es rechazada automáticamente con código **HTTP 422 Unprocessable Entity**.
-* **Resolución de Incompatibilidad de Esquema MLflow (Bugfix Crítico):** Se implementó una conversión explícita de tipos antes de llamar a `model.predict(X)`: `capacity` se castea a `int32` y las características continuas a `float32`, resolviendo la incompatibilidad estricta de schema que provocaba errores HTTP 500 al recibir `float64`.
+La latencia de esa petición fue 4.412 ms. Es una observación local de una petición, no un promedio de carga ni una garantía de latencia en producción. Las clases son 0 normal, 1 riesgo de desabasto y 2 riesgo de saturación, conforme al target de P2.
 
----
+| Verificación | Resultado observado |
+|---|---|
+| PyTest del proyecto | 75 aprobadas y 0 omitidas |
+| HTTP del servicio en contenedor | 10 de 10 comprobaciones aprobadas |
+| Auditor contra simulación válida | PASS 10 de 10 y código de salida 0 |
+| Auditor contra respuestas 503 | FAIL 0 de 10 y código de salida 1 esperado |
 
-## 5. Contenerización OCI con Docker y Podman (Dockerfile / Containerfile)
+El auditor valida códigos HTTP y contenido JSON. También exige un contenedor activo cuyo puerto publicado coincida con el servicio comprobado. Conserva errores de conexión y validación en JSON y devuelve un código distinto de cero ante fallos. Las simulaciones prueban el comportamiento del auditor y se distinguen de la ejecución con MLflow y el modelo reales.
 
-Se implementaron `Dockerfile` y `Containerfile` sincronizados bajo el estándar Open Container Initiative (OCI):
+## 4 Evidencia y contribuciones del equipo
 
-* **Imagen Base:** `python:3.12-slim`, minimizando vulnerabilidades y reduciendo el tamaño a ~350 MB.
-* **Soporte OpenMP para LightGBM:** Instalación de `libgomp1` mediante `apt-get`, requisito nativo indispensable para ejecutar el runtime de LightGBM en Linux.
-* **Aislamiento de Dependencias:** `requirements-api.txt` incluye únicamente las 10 dependencias de inferencia (`fastapi`, `uvicorn`, `pydantic`, `mlflow`, `lightgbm`, `scikit-learn`, `pandas`, `numpy`, `pyasn1` y `python-dotenv`).
-* **HEALTHCHECK Integrado:** Sondeo automático cada 30 segundos sobre `http://localhost:8000/health` para autoreparación en orquestadores.
-* **Automatización en Makefile:** Comandos `make build_container`, `make run_container`, `make test_api_live` y `make stop_container` con detección automática del motor disponible (`docker` o `podman`).
+La siguiente captura muestra la API respondiendo desde el servicio contenerizado. Su procedencia y hash se conservan en reports/semana8/capture_provenance.json. El contenedor y su puerto se verificaron mediante la inspección del motor registrada en reports/container_verification.json.
 
----
+![Respuesta de la API ejecutada en Podman](../reports/figures/semana8_api_container_evidence.png)
 
-## 6. Resultados de Verificación, Pruebas Unitarias y Evidencia
+| Integrante | Contribución identificable en Git |
+|---|---|
+| Freddin Alcántara | PR 32 con la API base y carga desde MLflow |
+| Diego Becerril | PR 33 con validación de entradas y definición de contenedor |
+| Ricardo Bahamón | PR 34 a 40 con integración, contenedores, pruebas y documentación |
+| Gregorio Escobedo Straffon | Commit b5b9119 con validación de tipos, puertos, auditor y regresiones; evidencia de ejecución y actualización de este reporte |
 
-El microservicio fue sometido a validación rigurosa mediante dos mecanismos complementarios:
+El servicio respondió a la petición válida y rechazó las entradas inválidas del conjunto de verificación. Los registros conservan los resultados, la procedencia del modelo y los hashes del código probado. Esta evidencia respalda la ejecución local documentada con el modelo y la imagen identificados.
 
-1. **Suite de Pruebas Unitarias (`pytest`):** **62 pruebas pasando al 100% en 13.04 segundos**, incluyendo las 8 pruebas de validación de endpoints y esquema de `tests/test_api.py`.
-2. **Sondeo Automatizado en Vivo (`scripts/verify_container_api.py`):** 6 comprobaciones automáticas contra el servicio activo (`reports/container_verification.json`). La latencia media de inferencia fue de **5.02 ms** (muy por debajo del umbral operacional de 50 ms).
+Fuentes de evidencia: reports/semana8/pytest.xml, pytest.log, registry_validation.json, container-build.log y execution.json; reports/container_verification.json.
 
-### Evidencia Visual del Contenedor Activo
-
-![Evidencia de verificación del contenedor OCI y respuesta en vivo de la API REST](../reports/figures/semana8_api_container_evidence.png)
-
----
-
-## 7. Justificación Teórica y Estratégica del Despliegue
-
-Con base en la literatura fundamental de MLOps (*Chip Huyen, 2022, Cap. 7; Treveil et al., 2020, Cap. 6*), se justifican las siguientes decisiones de diseño arquitectónico:
-
-* **Inferencia en Tiempo Real (Online) para la Pregunta 2:** La movilidad de bicicletas compartidas en Guadalajara sufre fluctuaciones estocásticas imprevistas (lluvia, eventos masivos, cierres viales). Los despachadores del CCO necesitan evaluar el riesgo inminente de una estación bajo demanda para desviar camiones de rebalanceo en caliente. La API REST proporciona respuestas sub-segundo (< 10 ms) directamente integrables con tableros operativos.
-* **Arquitectura Híbrida (Complementariedad con Batch):** Mientras que la Pregunta 2 opera en tiempo real, las Preguntas 1 (cálculo de inventario inicial de bicicletas) y 3 (segmentación de estaciones) se ejecutan como trabajos por lotes (Batch) programados a las 04:00 AM. Este enfoque híbrido evita sobrecostos de infraestructura en la nube y asigna el patrón óptimo a cada necesidad de negocio.
-
----
-
-## 8. Trabajo Colaborativo en Git y Gestión de Pull Requests
-
-Siguiendo la política de GitHub Flow y Conventional Commits del equipo, la entrega se organizó en ramas temáticas revisadas y fusionadas mediante Pull Requests formales en el repositorio oficial:
-
-* **PR #34:** `fix(api): robustecer validación de esquema MLflow y enriquecer endpoints de salud y metadatos` (Autor: Ricardo Bahamón).
-* **PR #35:** `feat(container): estandarizar Dockerfile OCI y automatizar ciclo de vida en Makefile` (Autor: Ricardo Bahamón).
-* **PR #36:** `docs(readme): guía de despliegue contenerizado y justificación de inferencia en tiempo real` (Autor: Ricardo Bahamón).
-* **PR #37:** `test(container): añadir verificación automatizada y evidencia de ejecución de la API` (Autor: Ricardo Bahamón).
-* **PR #38:** `fix(api): incluir python-dotenv en dependencias del contenedor y blindar importación` (Autor: Ricardo Bahamón).
-
----
-
-## 9. Conclusiones y Próximos Pasos
-
-La Semana 8 concluye con la exitosa transformación del modelo de machine learning en un servicio consumible, empaquetado en un contenedor estándar OCI que garantiza reproducibilidad entre entornos de desarrollo y producción. Esta base técnica permite al equipo abordar en la siguiente etapa la orquestación distribuida de microservicios, el monitoreo continuo de deriva en producción (Drift Monitoring) y los pipelines de CI/CD automatizados.
+Referencias técnicas: FastAPI, FastAPI in Containers, https://fastapi.tiangolo.com/deployment/docker/ ; MLflow, Deploy MLflow Model as a Local Inference Server, https://mlflow.org/docs/latest/ml/deployment/deploy-model-locally/ ; Podman, Installation, https://podman.io/docs/installation .
