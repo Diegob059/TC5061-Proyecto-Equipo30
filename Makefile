@@ -5,6 +5,9 @@
 PROJECT_NAME = TC5061-Proyecto-Equipo30
 PYTHON_VERSION = 3.12
 PYTHON_INTERPRETER = python3
+MLFLOW_PORT ?= 5000
+MLFLOW_BIND_HOST ?= 0.0.0.0
+MLFLOW_ALLOWED_HOSTS ?= localhost:*,127.0.0.1:*,host.docker.internal:*,host.containers.internal:*
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -88,10 +91,12 @@ train_p2:
 train_p3:
 	$(PYTHON_INTERPRETER) -m src.models.p3_train
 
-## Launch local MLflow Tracking server (DB-backed, required for the Model Registry) on port 5000
+## Launch MLflow Tracking for local containers (override MLFLOW_PORT if needed)
 .PHONY: mlflow
 mlflow:
-	mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000
+	$(PYTHON_INTERPRETER) -m mlflow server --backend-store-uri sqlite:///mlflow.db \
+		--host $(MLFLOW_BIND_HOST) --port $(MLFLOW_PORT) \
+		--allowed-hosts '$(MLFLOW_ALLOWED_HOSTS)' --serve-artifacts
 
 ## Run DeepChecks data integrity and train/test drift validation suites
 .PHONY: deepchecks
@@ -134,6 +139,11 @@ train_p1:
 CONTAINER_ENGINE ?= $(shell which docker 2>/dev/null || which podman 2>/dev/null || echo docker)
 IMAGE_NAME = mibici-risk-api:latest
 CONTAINER_NAME = mibici-risk-service
+CONTAINER_HOST = $(if $(findstring podman,$(CONTAINER_ENGINE)),host.containers.internal,host.docker.internal)
+CONTAINER_TRACKING_URI ?= http://$(CONTAINER_HOST):$(MLFLOW_PORT)
+CONTAINER_HOST_ARGS = $(if $(and $(filter Linux,$(shell uname -s)),$(findstring docker,$(CONTAINER_ENGINE))),--add-host=host.docker.internal:host-gateway,)
+MODEL_URI ?= models:/mibici-equipo30-p2-riesgo@champion
+API_BASE_URL ?= http://127.0.0.1:8000
 
 ## Build API container image using Docker or Podman
 .PHONY: build_container
@@ -144,7 +154,9 @@ build_container:
 .PHONY: run_container
 run_container:
 	$(CONTAINER_ENGINE) run -d --name $(CONTAINER_NAME) -p 8000:8000 \
-		-e MLFLOW_TRACKING_URI=http://host.docker.internal:5001 \
+		$(CONTAINER_HOST_ARGS) \
+		-e MLFLOW_TRACKING_URI=$(CONTAINER_TRACKING_URI) \
+		-e MODEL_URI=$(MODEL_URI) \
 		$(IMAGE_NAME)
 
 ## Stop and remove running API container
@@ -156,9 +168,5 @@ stop_container:
 ## Test API endpoints running on port 8000
 .PHONY: test_api_live
 test_api_live:
-	curl -s http://127.0.0.1:8000/health
-	@echo ""
-	curl -s -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" \
-		-d '{"capacity":20,"latitude":20.67,"longitude":-103.35,"salidas_lag_1":1,"llegadas_lag_1":2,"salidas_lag_2":1,"llegadas_lag_2":2,"salidas_lag_24":3,"llegadas_lag_24":4,"salidas_lag_168":5,"llegadas_lag_168":6,"balance_rolling_3h":-1.5,"balance_rolling_12h":0.5,"sin_hour":0.5,"cos_hour":0.866,"sin_dow":-0.5,"cos_dow":0.866}'
-	@echo ""
-
+	$(PYTHON_INTERPRETER) -m scripts.verify_container_api --base-url $(API_BASE_URL) \
+		--container-engine $(CONTAINER_ENGINE) --container-name $(CONTAINER_NAME)

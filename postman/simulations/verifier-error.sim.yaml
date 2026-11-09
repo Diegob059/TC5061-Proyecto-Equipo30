@@ -1,0 +1,17 @@
+# Simulation scaffold. Add fault-injection scenarios under each mock, e.g.:
+#   scenarios:
+#     - overrides:
+#         conditions:
+#           latency: { delay_ms: 500 }
+# Then serve it with: postman simulation run <this file>
+
+simulation: verifier
+routing: path
+mocks:
+  - name: mibici-api
+    routeKey: api
+    path: ../mocks/mibici-api/config.yaml
+    scenarios:
+      - overrides:
+          conditions:
+            error: {status_code: 503}

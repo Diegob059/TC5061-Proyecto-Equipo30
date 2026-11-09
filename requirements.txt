@@ -36,6 +36,5 @@ pyasn1==0.6.5
 setuptools==80.10.2
 deepchecks==0.19.1
 anywidget==0.11.0
-fastapi
-uvicorn
+-r requirements-api.txt
 -e .

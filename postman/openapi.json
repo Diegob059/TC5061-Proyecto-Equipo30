@@ -1,0 +1,360 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MiBici Risk Prediction API",
+    "description": "API REST de inferencia en tiempo real para anticipación de riesgos operativos (Desabasto y Saturación) en estaciones del sistema MiBici Guadalajara en un horizonte de 2 horas. MLOps Equipo 30.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Health & Status"
+        ],
+        "summary": "Root",
+        "description": "Endpoint raíz con verificación básica de salud y nombre del modelo.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health & Status"
+        ],
+        "summary": "Health",
+        "description": "Health check operativo del servicio.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-info": {
+      "get": {
+        "tags": [
+          "Model Metadata"
+        ],
+        "summary": "Model Info",
+        "description": "Retorna información detallada de procedencia y linaje del modelo cargado.",
+        "operationId": "model_info_model_info_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Model Info Model Info Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/predict": {
+      "post": {
+        "tags": [
+          "Inference"
+        ],
+        "summary": "Predict",
+        "description": "Ejecuta inferencia en tiempo real sobre las características de la estación.\n\nAlinea los tipos del DataFrame a los tipos estrictos del schema del modelo en MLflow\n(capacity como int32 y variables continuas como float32) para prevenir fallas de validación.",
+        "operationId": "predict_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionOutput"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PredictionInput": {
+        "properties": {
+          "capacity": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Capacity",
+            "description": "Capacidad total de anclajes físicos instalados en la estación"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "Latitud geográfica de la estación (WGS84)"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "Longitud geográfica de la estación (WGS84)"
+          },
+          "salidas_lag_1": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Salidas Lag 1",
+            "description": "Viajes iniciados (salidas) en la estación hace 1 hora (t-1)"
+          },
+          "llegadas_lag_1": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Llegadas Lag 1",
+            "description": "Viajes finalizados (llegadas) en la estación hace 1 hora (t-1)"
+          },
+          "salidas_lag_2": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Salidas Lag 2",
+            "description": "Viajes iniciados en la estación hace 2 horas (t-2)"
+          },
+          "llegadas_lag_2": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Llegadas Lag 2",
+            "description": "Viajes finalizados en la estación hace 2 horas (t-2)"
+          },
+          "salidas_lag_24": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Salidas Lag 24",
+            "description": "Viajes iniciados a la misma hora del día anterior (t-24)"
+          },
+          "llegadas_lag_24": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Llegadas Lag 24",
+            "description": "Viajes finalizados a la misma hora del día anterior (t-24)"
+          },
+          "salidas_lag_168": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Salidas Lag 168",
+            "description": "Viajes iniciados a la misma hora y día de la semana anterior (t-168)"
+          },
+          "llegadas_lag_168": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Llegadas Lag 168",
+            "description": "Viajes finalizados a la misma hora y día de la semana anterior (t-168)"
+          },
+          "balance_rolling_3h": {
+            "type": "number",
+            "title": "Balance Rolling 3H",
+            "description": "Balance neto móvil de los últimos 3 periodos horarios (llegadas - salidas)"
+          },
+          "balance_rolling_12h": {
+            "type": "number",
+            "title": "Balance Rolling 12H",
+            "description": "Balance neto móvil de las últimas 12 horas"
+          },
+          "sin_hour": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Sin Hour",
+            "description": "Componente seno de la codificación cíclica de la hora (0-23)"
+          },
+          "cos_hour": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Cos Hour",
+            "description": "Componente coseno de la codificación cíclica de la hora (0-23)"
+          },
+          "sin_dow": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Sin Dow",
+            "description": "Componente seno de la codificación cíclica del día de la semana (0-6)"
+          },
+          "cos_dow": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Cos Dow",
+            "description": "Componente coseno de la codificación cíclica del día de la semana (0-6)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "capacity",
+          "latitude",
+          "longitude",
+          "salidas_lag_1",
+          "llegadas_lag_1",
+          "salidas_lag_2",
+          "llegadas_lag_2",
+          "salidas_lag_24",
+          "llegadas_lag_24",
+          "salidas_lag_168",
+          "llegadas_lag_168",
+          "balance_rolling_3h",
+          "balance_rolling_12h",
+          "sin_hour",
+          "cos_hour",
+          "sin_dow",
+          "cos_dow"
+        ],
+        "title": "PredictionInput",
+        "description": "Esquema de validación estricto de las características de entrada para inferencia.",
+        "examples": [
+          {
+            "balance_rolling_12h": 0.5,
+            "balance_rolling_3h": -1.5,
+            "capacity": 20.0,
+            "cos_dow": 0.866,
+            "cos_hour": 0.866,
+            "latitude": 20.67,
+            "llegadas_lag_1": 2.0,
+            "llegadas_lag_168": 6.0,
+            "llegadas_lag_2": 2.0,
+            "llegadas_lag_24": 4.0,
+            "longitude": -103.35,
+            "salidas_lag_1": 1.0,
+            "salidas_lag_168": 5.0,
+            "salidas_lag_2": 1.0,
+            "salidas_lag_24": 3.0,
+            "sin_dow": -0.5,
+            "sin_hour": 0.5
+          }
+        ]
+      },
+      "PredictionOutput": {
+        "properties": {
+          "prediction": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2
+            ],
+            "title": "Prediction",
+            "description": "Clase predicha: 0 = Normal, 1 = Desabasto (riesgo de vaciarse a 2h), 2 = Saturacion (riesgo de llenarse a 2h)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prediction"
+        ],
+        "title": "PredictionOutput",
+        "description": "Esquema de salida de la predicción de riesgo operativo."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

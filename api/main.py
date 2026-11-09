@@ -5,9 +5,10 @@ Empaqueta el modelo LightGBM multiclase (Pregunta 2) recuperado desde el Model R
 
 from typing import Any, Literal
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from api.model_loader import get_model_metadata, load_model
 
@@ -42,9 +43,9 @@ class PredictionInput(BaseModel):
         },
     )
 
-    capacity: float = Field(
+    capacity: int = Field(
         gt=0,
-        allow_inf_nan=False,
+        le=2_147_483_647,
         description="Capacidad total de anclajes físicos instalados en la estación",
     )
     latitude: float = Field(
@@ -131,6 +132,22 @@ class PredictionInput(BaseModel):
         allow_inf_nan=False,
         description="Componente coseno de la codificación cíclica del día de la semana (0-6)",
     )
+
+    @field_validator("capacity", mode="before")
+    @classmethod
+    def reject_boolean_capacity(cls, value):
+        if isinstance(value, bool):
+            # Pydantic convierte ValueError en HTTP 422; TypeError escaparía como 500.
+            raise ValueError("capacity debe ser un número entero positivo de anclajes")  # noqa: TRY004
+        return value
+
+    @field_validator("*")
+    @classmethod
+    def validate_model_dtype(cls, value, info: ValidationInfo):
+        """Rechaza valores que se volverían infinitos al convertirlos a float32."""
+        if info.field_name != "capacity" and abs(value) > np.finfo(np.float32).max:
+            raise ValueError("El valor excede el rango float32 del modelo")
+        return value
 
 
 class PredictionOutput(BaseModel):

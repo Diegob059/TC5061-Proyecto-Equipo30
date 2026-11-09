@@ -1,0 +1,10 @@
+version: 1
+name: mibici-api
+slug: mibici-api
+protocol: http
+port: 4500
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

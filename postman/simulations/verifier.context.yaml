@@ -1,0 +1,30 @@
+purpose:
+  stands_in_for: Contrato HTTP de la API MiBici definido en api/main.py y postman/openapi.json.
+  unblocks: Verificación del auditor HTTP sin cargar MLflow ni iniciar un contenedor.
+assumptions:
+  - id: contract-responses
+    status: supported
+    claim: El verificador aprueba los diez casos modelados de HTTP 200 y rechazo 422.
+    reason: Se ejecutó el cliente requests real contra el mock local del contrato de este repositorio.
+    verification: El 2026-11-09 devolvió PASS 10/10 y código 0 en localhost:4018/api; el registro de simulación contiene las diez peticiones.
+    source: api/main.py; postman/mocks/mibici-api/default.js; reports/semana8/verifier-simulation-pass.json
+    updated_at: '2026-11-09'
+  - id: upstream-failure
+    status: supported
+    claim: El verificador marca FAIL y devuelve código 1 cuando los endpoints responden HTTP 503.
+    reason: La simulación de error produjo diez respuestas 503 y ninguna comprobación aprobada.
+    verification: El 2026-11-09 se ejecutó el auditor real contra localhost:4019/api y conservó el diagnóstico FAIL 0/10.
+    source: postman/simulations/verifier-error.sim.yaml; reports/semana8/verifier-simulation-fail.json
+    updated_at: '2026-11-09'
+  - id: model-inference
+    status: unknown
+    claim: Esta simulación acredita la inferencia del modelo real dentro de un contenedor.
+    reason: El mock responde una clase fija y no carga modelos ni inspecciona el motor de contenedores.
+    verification: No se realiza esa validación con este mock; la evidencia de inferencia y contenedor se obtiene por separado.
+    source: postman/mocks/mibici-api/default.js; scripts/verify_container_api.py
+    updated_at: '2026-11-09'
+fingerprints:
+  - id: serving-correction
+    date: '2026-11-09'
+    commit: 7c7448388fac89055e9f0f73784530293a73e5ca with uncommitted API and verifier corrections
+    cli: '1.75.0'
