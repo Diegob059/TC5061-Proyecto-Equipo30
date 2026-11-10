@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/private/tmp/equipo30-podman5/podman-final",
+    "build",
+    "--format=docker",
+    "-t",
+    "mibici-risk-api:semana8",
+    "-f",
+    "Containerfile",
+    "."
+  ],
+  "started_at_unix": 1794187328.885632,
+  "duration_seconds": 45.39272904396057,
+  "exit_code": 0
+}

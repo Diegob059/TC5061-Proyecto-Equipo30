@@ -1,47 +1,23 @@
-"""Script de verificación integral de la API REST de MiBici (FastAPI en contenedor OCI).
+"""Verifica HTTP y, opcionalmente, el contenedor que publica la API.
 
-Ejecuta un sondeo completo de los endpoints, valida el esquema de entrada/salida,
-mide la latencia de inferencia y genera un informe estructurado en reports/container_verification.json
-junto con la evidencia visual en reports/figures/semana8_api_container_evidence.png.
-
-Uso:
-    python -m scripts.verify_container_api [--base-url http://127.0.0.1:8000]
+El JSON conserva las respuestas observadas. No genera capturas ni simula una
+terminal. Devuelve 1 si falla cualquier comprobación y 2 para argumentos inválidos.
 """
 
 import argparse
 import json
+import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict
+from urllib.parse import urlsplit
 
-import matplotlib.pyplot as plt
 import requests
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Verificador de la API MiBici")
-    parser.add_argument(
-        "--base-url",
-        default="http://127.0.0.1:8000",
-        help="URL base del microservicio (por defecto: http://127.0.0.1:8000)",
-    )
-    parser.add_argument(
-        "--output-json",
-        default="reports/container_verification.json",
-        help="Ruta del informe JSON de auditoría",
-    )
-    parser.add_argument(
-        "--output-fig",
-        default="reports/figures/semana8_api_container_evidence.png",
-        help="Ruta de la figura gráfica de evidencia",
-    )
-    return parser.parse_args()
-
-
-def get_sample_payload() -> Dict[str, Any]:
+def get_sample_payload():
     return {
-        "capacity": 20.0,
+        "capacity": 20,
         "latitude": 20.67,
         "longitude": -103.35,
         "salidas_lag_1": 1.0,
@@ -61,230 +37,169 @@ def get_sample_payload() -> Dict[str, Any]:
     }
 
 
-def run_checks(base_url: str) -> Dict[str, Any]:
-    results = {
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "base_url": base_url,
-        "tests": [],
-        "overall_status": "PASS",
-    }
+def inspect_container(engine, name, host_port):
+    """Conserva evidencia del motor sin registrar variables de entorno sensibles."""
+    command = [engine, "inspect", name]
+    result = {"command": command, "passed": False}
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=30, check=True
+        )
+        item = json.loads(completed.stdout)[0]
+        state = item.get("State", {})
+        result.update(
+            {
+                "id": item.get("Id"),
+                "name": item.get("Name"),
+                "image_id": item.get("Image"),
+                "image_name": item.get("ImageName")
+                or item.get("Config", {}).get("Image"),
+                "running": state.get("Running", False),
+                "status": state.get("Status"),
+                "started_at": state.get("StartedAt"),
+                "ports": item.get("NetworkSettings", {}).get("Ports", {}),
+            }
+        )
+        result["expected_host_port"] = host_port
+        result["published_port_matches"] = any(
+            binding.get("HostPort") == str(host_port)
+            for binding in (result["ports"].get("8000/tcp") or [])
+        )
+        result["passed"] = bool(
+            result["id"] and result["running"] and result["published_port_matches"]
+        )
+    except (
+        OSError,
+        subprocess.SubprocessError,
+        ValueError,
+        IndexError,
+        TypeError,
+    ) as exc:
+        result["error"] = str(exc)
+    return result
 
-    # 1. GET /
-    t0 = time.perf_counter()
-    r = requests.get(f"{base_url}/", timeout=10)
-    lat_ms = (time.perf_counter() - t0) * 1000
-    results["tests"].append({
-        "name": "Endpoint Raiz (GET /)",
-        "endpoint": "/",
-        "method": "GET",
-        "status_code": r.status_code,
-        "expected_code": 200,
-        "latency_ms": round(lat_ms, 2),
-        "passed": r.status_code == 200 and r.json().get("status") == "ok",
-        "response": r.json(),
-    })
 
-    # 2. GET /health
-    t0 = time.perf_counter()
-    r = requests.get(f"{base_url}/health", timeout=10)
-    lat_ms = (time.perf_counter() - t0) * 1000
-    results["tests"].append({
-        "name": "Health Check (GET /health)",
-        "endpoint": "/health",
-        "method": "GET",
-        "status_code": r.status_code,
-        "expected_code": 200,
-        "latency_ms": round(lat_ms, 2),
-        "passed": r.status_code == 200 and r.json().get("status") == "healthy",
-        "response": r.json(),
-    })
-
-    # 3. GET /model-info
-    t0 = time.perf_counter()
-    r = requests.get(f"{base_url}/model-info", timeout=10)
-    lat_ms = (time.perf_counter() - t0) * 1000
-    results["tests"].append({
-        "name": "Metadatos del Modelo (GET /model-info)",
-        "endpoint": "/model-info",
-        "method": "GET",
-        "status_code": r.status_code,
-        "expected_code": 200,
-        "latency_ms": round(lat_ms, 2),
-        "passed": r.status_code == 200 and r.json().get("alias") == "champion",
-        "response": r.json(),
-    })
-
-    # 4. POST /predict (Payload Valido)
+def run_checks(base_url, timeout=5, container_engine=None, container_name=None):
+    base_url = base_url.rstrip("/")
     payload = get_sample_payload()
-    t0 = time.perf_counter()
-    r = requests.post(f"{base_url}/predict", json=payload, timeout=10)
-    lat_ms = (time.perf_counter() - t0) * 1000
-    pred_passed = r.status_code == 200 and "prediction" in r.json()
-    results["tests"].append({
-        "name": "Inferencia Valida (POST /predict)",
-        "endpoint": "/predict",
-        "method": "POST",
-        "status_code": r.status_code,
-        "expected_code": 200,
-        "latency_ms": round(lat_ms, 2),
-        "passed": pred_passed,
-        "request_payload": payload,
-        "response": r.json(),
-    })
-
-    # 5. POST /predict (Rechazo 422: Capacidad Invalida)
-    invalid_payload = get_sample_payload()
-    invalid_payload["capacity"] = 0.0
-    r = requests.post(f"{base_url}/predict", json=invalid_payload, timeout=10)
-    results["tests"].append({
-        "name": "Validacion Pydantic gt=0 (POST /predict)",
-        "endpoint": "/predict",
-        "method": "POST",
-        "status_code": r.status_code,
-        "expected_code": 422,
-        "passed": r.status_code == 422,
-    })
-
-    # 6. POST /predict (Rechazo 422: Campo No Permitido extra=forbid)
-    extra_payload = get_sample_payload()
-    extra_payload["campo_desconocido"] = "inyeccion"
-    r = requests.post(f"{base_url}/predict", json=extra_payload, timeout=10)
-    results["tests"].append({
-        "name": "Validacion extra='forbid' (POST /predict)",
-        "endpoint": "/predict",
-        "method": "POST",
-        "status_code": r.status_code,
-        "expected_code": 422,
-        "passed": r.status_code == 422,
-    })
-
-    all_passed = all(t["passed"] for t in results["tests"])
+    missing = {k: v for k, v in payload.items() if k != "salidas_lag_168"}
+    cases = [
+        ("Raíz", "GET", "/", None, 200),
+        ("Salud", "GET", "/health", None, 200),
+        ("Configuración del modelo", "GET", "/model-info", None, 200),
+        ("Predicción", "POST", "/predict", payload, 200),
+        ("Capacidad cero", "POST", "/predict", {**payload, "capacity": 0}, 422),
+        (
+            "Capacidad fraccionaria",
+            "POST",
+            "/predict",
+            {**payload, "capacity": 0.5},
+            422,
+        ),
+        (
+            "Capacidad fuera de int32",
+            "POST",
+            "/predict",
+            {**payload, "capacity": 2**31},
+            422,
+        ),
+        (
+            "Valor fuera de float32",
+            "POST",
+            "/predict",
+            {**payload, "salidas_lag_1": 1e39},
+            422,
+        ),
+        ("Campo extra", "POST", "/predict", {**payload, "campo_desconocido": 1}, 422),
+        ("Campo faltante", "POST", "/predict", missing, 422),
+    ]
+    results = {
+        "timestamp_utc": datetime.now(UTC).isoformat(),
+        "base_url": base_url,
+        "evidence_scope": "container_and_http" if container_engine else "http_only",
+        "tests": [],
+    }
+    with requests.Session() as session:
+        for name, method, endpoint, body, expected in cases:
+            item = {
+                "name": name,
+                "endpoint": endpoint,
+                "method": method,
+                "expected_code": expected,
+                "passed": False,
+            }
+            if body is not None:
+                item["request_payload"] = body
+            started = time.perf_counter()
+            try:
+                response = session.request(
+                    method, base_url + endpoint, json=body, timeout=timeout
+                )
+                item["status_code"] = response.status_code
+                data = response.json()
+                item["response"] = data
+                valid = isinstance(data, dict)
+                if expected == 422:
+                    valid = valid and isinstance(data.get("detail"), list)
+                elif endpoint == "/predict":
+                    prediction = data.get("prediction") if valid else None
+                    valid = type(prediction) is int and prediction in (0, 1, 2)
+                elif endpoint == "/":
+                    valid = valid and data.get("status") == "ok"
+                elif endpoint == "/health":
+                    valid = valid and data.get("status") == "healthy"
+                else:
+                    valid = valid and isinstance(data.get("model_uri"), str)
+                item["passed"] = response.status_code == expected and valid
+            except (requests.RequestException, ValueError) as exc:
+                item["error"] = str(exc)
+            item["latency_ms"] = round((time.perf_counter() - started) * 1000, 3)
+            results["tests"].append(item)
+    if container_engine:
+        url = urlsplit(base_url)
+        results["container"] = inspect_container(
+            container_engine,
+            container_name,
+            url.port or (443 if url.scheme == "https" else 80),
+        )
+    passed = sum(item["passed"] for item in results["tests"])
+    results["summary"] = {"passed": passed, "total": len(cases)}
+    all_passed = passed == len(cases) and results.get("container", {}).get(
+        "passed", True
+    )
     results["overall_status"] = "PASS" if all_passed else "FAIL"
     return results
 
 
-def render_evidence_figure(results: Dict[str, Any], output_path: str):
-    fig = plt.figure(figsize=(14, 9), facecolor="#0f172a")
-    ax = fig.add_subplot(111)
-    ax.set_facecolor("#0f172a")
-    ax.axis("off")
-
-    # Header
-    ax.text(
-        0.03,
-        0.94,
-        "TC5061 MLOps Equipo 30 — Verificación de Servicio Contenerizado",
-        color="#38bdf8",
-        fontsize=18,
-        fontweight="bold",
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base-url", default="http://127.0.0.1:8000")
+    parser.add_argument("--timeout", type=float, default=5)
+    parser.add_argument("--output-json", default="reports/container_verification.json")
+    parser.add_argument(
+        "--container-engine", help="docker, podman o ruta al ejecutable"
     )
-    ax.text(
-        0.03,
-        0.90,
-        "Microservicio REST: FastAPI + Uvicorn | Runtime: OCI Container (Docker / Podman) | Puerto: 8000",
-        color="#94a3b8",
-        fontsize=11,
+    parser.add_argument("--container-name")
+    args = parser.parse_args(argv)
+    if args.timeout <= 0 or not args.timeout < float("inf"):
+        parser.error("--timeout debe ser positivo y finito")
+    if bool(args.container_engine) != bool(args.container_name):
+        parser.error("--container-engine y --container-name deben especificarse juntos")
+    results = run_checks(
+        args.base_url, args.timeout, args.container_engine, args.container_name
     )
-
-    # Box 1: Container & Model Runtime Info
-    box1_text = (
-        "┌── ESTADO DEL CONTENEDOR Y MODEL REGISTRY ──────────────────────────────────────┐\n"
-        "│  Imagen OCI:         mibici-risk-api:latest (Python 3.12-slim, libgomp1)        │\n"
-        "│  Model URI:          models:/mibici-equipo30-p2-riesgo@champion                  │\n"
-        "│  Tracking Server:    MLflow Tracking (http://127.0.0.1:5001 / host-gateway)     │\n"
-        "│  Algoritmo Activo:   LightGBM Multiclase (lgbm_profundo, Run 4dcbff8784)        │\n"
-        "│  Estrategia Inferencia: Tiempo Real (Online Request-Response con Pydantic v2)   │\n"
-        "└────────────────────────────────────────────────────────────────────────────────┘"
+    path = Path(args.output_json)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(results, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    ax.text(
-        0.03,
-        0.73,
-        box1_text,
-        color="#a5f3fc",
-        fontfamily="monospace",
-        fontsize=10.5,
+    summary = results["summary"]
+    print(
+        f"{results['overall_status']}: {summary['passed']}/{summary['total']} comprobaciones HTTP; alcance: {results['evidence_scope']}"
     )
-
-    # Box 2: Test Execution & Responses
-    pred_res = next((t for t in results["tests"] if t["endpoint"] == "/predict" and t["status_code"] == 200), {})
-    pred_val = pred_res.get("response", {}).get("prediction", "N/A")
-    pred_lat = pred_res.get("latency_ms", "N/A")
-    pred_label = {0: "Normal (Demanda Balanceada)", 1: "Desabasto (Riesgo Vaciado <= 2h)", 2: "Saturacion (Riesgo Lleno <= 2h)"}.get(pred_val, "Desconocido")
-
-    box2_text = (
-        "┌── SONDEO DE ENDPOINTS Y VALIDACIÓN EN VIVO ────────────────────────────────────┐\n"
-        "│  GET  /              -> 200 OK  [{\"status\":\"ok\",\"model\":\"mibici-equipo30-p2-riesgo\"}]   │\n"
-        "│  GET  /health        -> 200 OK  [{\"status\":\"healthy\",\"service\":\"MiBici Risk API\"}]   │\n"
-        "│  GET  /model-info    -> 200 OK  [{\"alias\":\"champion\",\"horizon\":\"2 horas\"}]           │\n"
-        "│  POST /predict       -> 200 OK  {\"prediction\": " + str(pred_val) + "} -> Clase: " + pred_label[:28].ljust(28) + "│\n"
-        "│     ├─ Latencia Inferencia:  " + str(pred_lat).ljust(6) + " ms                                                  │\n"
-        "│     ├─ Casting Esquema:      capacity=int32, features=float32 (100% alineado)  │\n"
-        "│  POST /predict (422) -> 422 Unprocessable Entity (Rechazo correcto a capacity <= 0) │\n"
-        "│  POST /predict (422) -> 422 Unprocessable Entity (Rechazo extra='forbid' campos)    │\n"
-        "└────────────────────────────────────────────────────────────────────────────────┘"
-    )
-    ax.text(
-        0.03,
-        0.45,
-        box2_text,
-        color="#fef08a",
-        fontfamily="monospace",
-        fontsize=10.5,
-    )
-
-    # Box 3: Curl Command Example
-    box3_text = (
-        "┌── PETICIÓN DE PRUEBA REALIZADA (CURL) ────────────────────────────────────────┐\n"
-        "$ curl -s -X POST http://localhost:8000/predict \\\n"
-        "    -H \"Content-Type: application/json\" \\\n"
-        "    -d '{\"capacity\": 20.0, \"latitude\": 20.67, \"longitude\": -103.35, ...}'\n"
-        "\n"
-        "RESPUESTA RECIBIDA:\n"
-        "HTTP/1.1 200 OK\n"
-        "content-type: application/json\n"
-        "{\"prediction\": " + str(pred_val) + "}\n"
-        "└────────────────────────────────────────────────────────────────────────────────┘"
-    )
-    ax.text(
-        0.03,
-        0.18,
-        box3_text,
-        color="#86efac",
-        fontfamily="monospace",
-        fontsize=10.5,
-    )
-
-    # Footer
-    status_color = "#4ade80" if results["overall_status"] == "PASS" else "#f87171"
-    ax.text(
-        0.03,
-        0.07,
-        f"ESTADO GLOBAL DE LA VERIFICACIÓN: {results['overall_status']} (6/6 pruebas aprobadas) | Timestamp: {results['timestamp_utc']}",
-        color=status_color,
-        fontsize=12,
-        fontweight="bold",
-    )
-
-    plt.tight_layout()
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(output_path, dpi=160, bbox_inches="tight", facecolor=fig.get_facecolor())
-    plt.close()
-    print(f"✓ Evidencia visual generada en: {output_path}")
-
-
-def main():
-    args = parse_args()
-    print(f"Iniciando sondeo de la API en: {args.base_url}")
-    results = run_checks(args.base_url)
-
-    Path(args.output_json).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.output_json, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-    print(f"✓ Reporte de auditoría guardado en: {args.output_json}")
-
-    render_evidence_figure(results, args.output_fig)
-    print("✓ Verificación completada con éxito.")
+    print(f"Resultados: {path}")
+    return 0 if results["overall_status"] == "PASS" else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

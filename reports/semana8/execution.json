@@ -1,0 +1,43 @@
+{
+  "source_commit": "2ea261595fe3148ad3276e449c5f5a2e9b80d82e",
+  "pytest": {
+    "passed": 75,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0
+  },
+  "contract_validation": "OpenAPI structure validated with openapi-pydantic; JSON schemas and internal references checked locally.",
+  "source_sha256": {
+    "api/main.py": "0621e5fd7192f52426cfb7c4ad68e5f8f32e78040166918330d3f61ef4812a0d",
+    "api/model_loader.py": "a4378eca9bb777170b4a455ff9ab99a3b34ca47145cdd9255ef5db06a32f1163",
+    "Makefile": "27f7f16d25fc207568bcbf1554aa32cb2cd32ffb729eab393db2ab5af487e717",
+    "Containerfile": "92b51784567dbf5a5cae66747eb00d3706ec25ce42e1542e729f9fa52340eb32",
+    "requirements-api.txt": "765c46d2c57c45ac4c74c7f8017f2748494ca7573a3ad15b0fdca8e302a8be5b",
+    "requirements.txt": "58f6c1b9c4d200fded91d013abfd45afa984a5fcb50b23cdce848b748892e856",
+    "scripts/verify_container_api.py": "8ae74da73c595ae06ec64e649e08402382a3924a78c554d80d6ea52bac1dc7b3",
+    "tests/test_api.py": "222b35485ba85eca3f3f08a9a209365ad84b1e82583b5db4ed15467019ed8e03",
+    "tests/test_api_verifier.py": "4ce3fe4a234b30935e28d8d959a616f9f43d48ca1f3fdd3e38e398b85355d671"
+  },
+  "evidence_sha256": {
+    "pytest.log": "de55f6c210c4b66e5bef82ac786570d6c9dca3f8177cd1fce91267af4eb29e41",
+    "verifier-simulation-pass.json": "89f451b92fcb39de75f6345247c10d7c7643906bb86e800c7c0539ac5391c0f5",
+    "registry_validation.json": "5241acceda49a6de3211590d351dc5ee3534c57b9be9a42f6ca53621e1809796",
+    "verifier-simulation-fail.json": "fbf7fcdfc0c20e50658deefbf49dad72ca588485a6e8e056e22a051a03a475dc",
+    "api-host-verification.json": "27fd4f173c08d8feb22a11604955c30dcdc095b16744e7b9b11a6e136e1bfc74",
+    "capture_provenance.json": "6885320dc28a069ed9a591bb0ff077f14d72bec141dbeaab1351794bf93f3d54",
+    "pytest.xml": "526612d42d9391b34369e9d8be2a73db3d26dd9a133af3ee783cdd81a25446a1",
+    "container-build.log": "512a8dce17c99affdb88ee82ec500ca5b10301190c915d062d954a58a9cbb5d2",
+    "container-build.json": "d35db6f56262f88ecb9bccca2a55ac6c157ecc368f46fb75ebbcf71d73d98595",
+    "container-runtime.log": "8bbcd85f5c5b40f01f232044a06b11fcfe6816ff331c960e85d6cae9c9e8cf0a",
+    "container-image.json": "82b21fb8936eba06d8b1ea89a1ce087c851f2413250c9f120a61c9abba1e2ce6",
+    "container-ps.txt": "e7be5cdf98944548fe3d6f5f8e2cd704f248b09859bb1aba6c6a6af8e3c6c7fb"
+  },
+  "artifact_sha256": {
+    "reports/container_verification.json": "cb2f073feda8b21130d3d15e5307010d4105a765659e6bda7230ded02f619d38",
+    "reports/figures/semana8_api_container_evidence.png": "5052b95ec72575d1477899ee613261d65a03d52df27e546161df673d5f92eae5",
+    "postman/openapi.json": "19bff113bfa26a57a335619b3d2b12fe18d724c6cc70a05cacdee692114251c1",
+    "docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.pdf": "f0b8695be7273243ec317cbe3fc05722900a47af1c534e5b1eda36b2a11fe82c",
+    "docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.docx": "2037561e13c3ba6305d82d728db6fa5c8868a0fa824f73b55e56214f2fba911c",
+    "docs/TC5061_Reporte_Despliegue_Contenedores_Equipo30.md": "7ecbd3d785092e1b78059bef7e28390d8ab9086e2946c5c2d5f220699aa4827a"
+  }
+}

@@ -59,12 +59,23 @@ def test_predict_accepts_model_features_and_returns_class(api_client):
     assert response.json() == {"prediction": 2}
     assert model.called
     assert list(model.input_features.columns) == list(valid_payload())
+    assert str(model.input_features["capacity"].dtype) == "int32"
+    assert all(
+        str(dtype) == "float32"
+        for name, dtype in model.input_features.dtypes.items()
+        if name != "capacity"
+    )
 
 
 @pytest.mark.parametrize(
     "update",
     [
         {"capacity": 0},
+        {"capacity": 0.5},
+        {"capacity": True},
+        {"capacity": 2**31},
+        {"salidas_lag_1": 1e39},
+        {"balance_rolling_3h": -1e39},
         {"sin_hour": 1.1},
         {"unexpected_feature": 1},
     ],
@@ -78,6 +89,15 @@ def test_predict_rejects_invalid_features(api_client, update):
 
     assert response.status_code == 422
     assert not model.called
+
+
+def test_predict_accepts_integral_capacity_without_changing_it(api_client):
+    client, model = api_client
+    payload = valid_payload()
+    payload["capacity"] = 20.0
+    response = client.post("/predict", json=payload)
+    assert response.status_code == 200
+    assert model.input_features["capacity"].iloc[0] == 20
 
 
 def test_predict_rejects_missing_features(api_client):

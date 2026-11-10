@@ -1,0 +1,305 @@
+{
+  "timestamp_utc": "2026-11-09T01:06:53.206345+00:00",
+  "base_url": "http://localhost:4019/api",
+  "evidence_scope": "http_only",
+  "tests": [
+    {
+      "name": "Raíz",
+      "endpoint": "/",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": false,
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 7.884
+    },
+    {
+      "name": "Salud",
+      "endpoint": "/health",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": false,
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.741
+    },
+    {
+      "name": "Configuración del modelo",
+      "endpoint": "/model-info",
+      "method": "GET",
+      "expected_code": 200,
+      "passed": false,
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.826
+    },
+    {
+      "name": "Predicción",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 200,
+      "passed": false,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.777
+    },
+    {
+      "name": "Capacidad cero",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": false,
+      "request_payload": {
+        "capacity": 0,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.676
+    },
+    {
+      "name": "Capacidad fraccionaria",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": false,
+      "request_payload": {
+        "capacity": 0.5,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.733
+    },
+    {
+      "name": "Capacidad fuera de int32",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": false,
+      "request_payload": {
+        "capacity": 2147483648,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.679
+    },
+    {
+      "name": "Valor fuera de float32",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": false,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1e+39,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.616
+    },
+    {
+      "name": "Campo extra",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": false,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "salidas_lag_168": 5.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866,
+        "campo_desconocido": 1
+      },
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.619
+    },
+    {
+      "name": "Campo faltante",
+      "endpoint": "/predict",
+      "method": "POST",
+      "expected_code": 422,
+      "passed": false,
+      "request_payload": {
+        "capacity": 20,
+        "latitude": 20.67,
+        "longitude": -103.35,
+        "salidas_lag_1": 1.0,
+        "llegadas_lag_1": 2.0,
+        "salidas_lag_2": 1.0,
+        "llegadas_lag_2": 2.0,
+        "salidas_lag_24": 3.0,
+        "llegadas_lag_24": 4.0,
+        "llegadas_lag_168": 6.0,
+        "balance_rolling_3h": -1.5,
+        "balance_rolling_12h": 0.5,
+        "sin_hour": 0.5,
+        "cos_hour": 0.866,
+        "sin_dow": -0.5,
+        "cos_dow": 0.866
+      },
+      "status_code": 503,
+      "response": {
+        "error": {
+          "message": "Service Unavailable",
+          "statusCode": 503
+        },
+        "scenario": "error"
+      },
+      "latency_ms": 0.575
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "total": 10
+  },
+  "overall_status": "FAIL"
+}

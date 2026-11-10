@@ -1,0 +1,2 @@
+CONTAINER ID  IMAGE                              COMMAND               CREATED        STATUS                  PORTS                   NAMES
+514ff295be7e  localhost/mibici-risk-api:semana8  uvicorn api.main:...  2 minutes ago  Up 2 minutes (healthy)  0.0.0.0:8000->8000/tcp  mibici-risk-service

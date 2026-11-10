@@ -1,0 +1,15 @@
+{
+  "engine_version": "podman version 5.8.9",
+  "image_id": "b04a225818e4f136ef69324949fe65a405dcfe7617c51d85e07a15b89c2d6379",
+  "size_bytes": 963245413,
+  "healthcheck": {
+    "Test": [
+      "CMD-SHELL",
+      "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"
+    ],
+    "StartPeriod": 10000000000,
+    "Interval": 30000000000,
+    "Timeout": 5000000000,
+    "Retries": 3
+  }
+}
