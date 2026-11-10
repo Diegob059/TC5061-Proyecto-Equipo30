@@ -46,6 +46,7 @@ TC5061-Proyecto-Equipo30/
 │   ├── ingest.py             <- Entry point `ingest` del MLproject (despacha a p1/p2/p3/all).
 │   ├── train.py              <- Entry point `train` del MLproject (pregunta + modelo + hiperparámetros).
 │   ├── run_deepchecks.py     <- Validación de calidad, integridad y deriva de datos con DeepChecks.
+│   ├── run_evidently.py      <- Reporte de calidad y drift temporal de P2 con Evidently.
 │   ├── verify_container_api.py <- Verificación automatizada de salud, latencia y endpoints de la API en contenedor.
 │   ├── generate_week8_report.py <- Generador automatizado de reportes oficiales (DOCX, Markdown, PDF).
 │   └── ejecutar_notebook_p1.py <- Helper para re-ejecutar el notebook de P1 y dejar sus gráficas actualizadas.
@@ -419,7 +420,30 @@ Capturas directas de los HTML exportados: [integridad](reports/figures/semana7_d
 
 ![Captura del visor de DeepChecks sobre datos reales](reports/figures/semana7_deepchecks_evidence.png)
 
-### 7.3 Seguridad: resultados y limitaciones
+### 7.3 Evidently: drift y calidad de datos de P2
+
+Se usan dos periodos temporales del mismo Parquet de características de P2:
+
+- **Referencia:** filas de entrenamiento desde enero de 2025 y con `timestamp < 2025-12-31 22:00:00`. Representan la distribución de los datos con los que se entrenó el modelo, excluyendo las dos últimas horas que podrían filtrar información del periodo siguiente.
+- **Actual:** filas con `timestamp >= 2026-01-01 00:00:00`, hasta el final disponible en el Parquet (actualmente, septiembre de 2026). Es el periodo posterior al entrenamiento disponible para aproximar el comportamiento de producción.
+
+Ambos conjuntos se procesan con `get_train_test_data`, que excluye filas sin calentamiento válido o sin etiqueta y selecciona las mismas **17 variables predictoras**. Se muestrean 7,500 filas por periodo con semilla fija; las variables objetivo y futuras no entran en la comparación.
+
+Generar los datos procesados si no existen y ejecutar el reporte:
+
+```bash
+make data
+make evidently
+# Opcional: modificar el tamaño total de muestra o las rutas
+python -m scripts.run_evidently --sample-size 15000
+python -m scripts.run_evidently --data-path data/processed/p2_mibici_features_target.parquet --output-dir reports/evidently
+```
+
+Evidently combina `DataDriftPreset` para comparar la distribución por variable y `DataSummaryPreset` con pruebas de calidad basadas en la referencia. Los archivos se generan en `reports/evidently/`: `p2_data_drift.html` para inspección, `p2_data_drift.json` para resultados completos y `p2_data_drift_summary.json` para periodo, muestra, columnas, versiones y hash SHA-256 del Parquet. El reporte es diagnóstico: un hallazgo de drift se conserva y no se interpreta por sí solo como fallo del modelo ni provoca que el comando oculte el informe.
+
+En la ejecución sobre el Parquet real se compararon **7,500 filas por periodo**. Ninguna de las 17 variables superó el umbral individual de drift (`0.1`); la mayor distancia fue `0.0711` en `balance_rolling_12h`. La muestra actual no tuvo valores faltantes. Evidently contó 38 filas con vectores de características repetidos; como `station_id` y `timestamp` no forman parte de las variables del modelo, esto no implica por sí mismo duplicados de observaciones. El detalle está en el [reporte HTML](reports/evidently/p2_data_drift.html), el [resultado JSON](reports/evidently/p2_data_drift.json) y el [resumen de ejecución](reports/evidently/p2_data_drift_summary.json).
+
+### 7.4 Seguridad: resultados y limitaciones
 
 ```bash
 make security_code
@@ -635,4 +659,3 @@ La implementación, documentación y entrega de la Semana 8 se gestionó mediant
 
 ## 📄 11. Licencia
 Este proyecto está desarrollado bajo fines académicos para el curso TC5061 (Operaciones de Inteligencia Artificial) en el Tecnológico de Monterrey. Licencia MIT.
-
