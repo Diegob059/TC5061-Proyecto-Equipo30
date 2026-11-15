@@ -1,0 +1,16 @@
+metrica,descripcion,criterio,v1_champion,v2_challenger,delta_absoluto,delta_porcentual
+balanced_accuracy,Balanced Accuracy,Mayor es mejor,0.87961,0.87555,-0.00406,-0.46
+macro_f1,Macro F1-Score,Mayor es mejor,0.37038,0.36626,-0.00412,-1.11
+weighted_f1,Weighted F1-Score,Mayor es mejor,0.90868,0.90455,-0.00413,-0.45
+accuracy,Exactitud Global (Accuracy),Mayor es mejor,0.8464,0.83946,-0.00694,-0.82
+recall_desabasto,Recall Desabasto (Clase 1),Mayor es mejor (Crítica),0.88083,0.87565,-0.00518,-0.59
+precision_desabasto,Precisión Desabasto (Clase 1),Mayor es mejor,0.04396,0.04255,-0.00141,-3.22
+f1_desabasto,F1 Desabasto (Clase 1),Mayor es mejor,0.08374,0.08115,-0.00259,-3.09
+f2_desabasto,F2 Desabasto (Clase 1),Mayor es mejor (Prioriza Recall),0.18323,0.17812,-0.00511,-2.79
+recall_saturacion,Recall Saturación (Clase 2),Mayor es mejor (Crítica),0.91209,0.91209,0.0,0.0
+precision_saturacion,Precisión Saturación (Clase 2),Mayor es mejor,0.05916,0.05597,-0.00319,-5.39
+f1_saturacion,F1 Saturación (Clase 2),Mayor es mejor,0.11111,0.10546,-0.00565,-5.08
+f2_saturacion,F2 Saturación (Clase 2),Mayor es mejor,0.23486,0.22469,-0.01017,-4.33
+recall_normal,Recall Normal (Clase 0),Mayor es mejor,0.8459,0.83892,-0.00699,-0.83
+precision_normal,Precisión Normal (Clase 0),Mayor es mejor,0.99945,0.99942,-3e-05,-0.0
+latency_ms_per_1k,Latencia Inferencia (ms / 1k peticiones),Menor es mejor,4.22916,3.49743,-0.73173,-17.3

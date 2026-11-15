@@ -91,6 +91,11 @@ train_p2:
 train_challenger:
 	$(PYTHON_INTERPRETER) scripts/train_and_register_challenger.py
 
+## Run A/B testing suite between Champion v1 and Challenger v2 on production data
+.PHONY: ab_test
+ab_test:
+	$(PYTHON_INTERPRETER) scripts/run_ab_testing.py
+
 ## Train specifically Question 3 station-clustering model
 .PHONY: train_p3
 train_p3:
