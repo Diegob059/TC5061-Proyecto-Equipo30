@@ -86,6 +86,11 @@ train:
 train_p2:
 	$(PYTHON_INTERPRETER) -m src.models.p2_train
 
+## Train and register Question 2 Challenger model v2 in MLflow Model Registry
+.PHONY: train_challenger
+train_challenger:
+	$(PYTHON_INTERPRETER) scripts/train_and_register_challenger.py
+
 ## Train specifically Question 3 station-clustering model
 .PHONY: train_p3
 train_p3:
