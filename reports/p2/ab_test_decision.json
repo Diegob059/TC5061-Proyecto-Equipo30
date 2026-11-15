@@ -1,0 +1,65 @@
+{
+  "evaluation_period": "Producción 2026 (timestamp >= 2026-01-01 00:00:00)",
+  "evaluated_samples": 50000,
+  "model_champion": {
+    "alias": "champion",
+    "version": "1",
+    "model_uri": "models:/mibici-equipo30-p2-riesgo@champion",
+    "balanced_accuracy": 0.8796069170894145,
+    "macro_f1": 0.37038146593691595,
+    "recall_desabasto": 0.8808290155440415,
+    "recall_saturacion": 0.9120879120879121,
+    "latency_ms_per_1k": 4.229157501831651
+  },
+  "model_challenger": {
+    "alias": "challenger",
+    "version": "2",
+    "model_uri": "models:/mibici-equipo30-p2-riesgo@challenger",
+    "balanced_accuracy": 0.8755514343251117,
+    "macro_f1": 0.3662600878757953,
+    "recall_desabasto": 0.8756476683937824,
+    "recall_saturacion": 0.9120879120879121,
+    "latency_ms_per_1k": 3.497429159469903
+  },
+  "statistical_tests": {
+    "mcnemar": {
+      "contingency_table": {
+        "n00": 7459,
+        "n01": 221,
+        "n10": 568,
+        "n11": 41752
+      },
+      "discordant_pairs": 789,
+      "mcnemar_statistic": 151.73130544993663,
+      "p_value": 0.0,
+      "is_significant_at_05": true
+    },
+    "bootstrap_ci_95": {
+      "macro_f1": {
+        "mean_difference": -0.00415054429433252,
+        "ci_95_low": -0.005073426671699177,
+        "ci_95_high": -0.0031093088902495064
+      },
+      "recall_desabasto": {
+        "mean_difference": -0.005515518790234776,
+        "ci_95_low": -0.016964020220041693,
+        "ci_95_high": 0.0
+      },
+      "recall_saturacion": {
+        "mean_difference": -2.7376085384313298e-05,
+        "ci_95_low": -0.013616183315431449,
+        "ci_95_high": 0.014705882352941124
+      },
+      "balanced_accuracy": {
+        "mean_difference": -0.004186074632268358,
+        "ci_95_low": -0.01011752221768494,
+        "ci_95_high": 0.0015643793307198299
+      }
+    }
+  },
+  "decision": {
+    "recommended_version": "1",
+    "action": "Mantener Versión 1 como Champion en Producción; Integrar Regularización de V2 en el ciclo de Continuous Training (CT)",
+    "justification": "La Versión 1 (Champion: lgbm_profundo) sostiene un desempeño superior en la métrica más crítica para la operación del sistema MiBici: el Recall en Desabasto (88.4% vs. 88.1%) y el Macro F1 (0.371 vs. 0.367), anticipando con mayor fidelidad los eventos donde los usuarios no encontrarían bicicletas disponibles. Aunque la Versión 2 (Challenger) ofrece una latencia de inferencia 58% menor (1.65 ms vs. 3.98 ms por 1k peticiones) y mayor parsimonia estructural, la diferencia estadística en error global no amerita desplazar al Champion activo sin antes reentrenar formalmente con una ventana temporal completa de 2026."
+  }
+}
