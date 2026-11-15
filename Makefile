@@ -103,6 +103,11 @@ mlflow:
 deepchecks:
 	$(PYTHON_INTERPRETER) -m scripts.run_deepchecks
 
+## Generate Evidently data drift and data quality reports for P2
+.PHONY: evidently
+evidently:
+	$(PYTHON_INTERPRETER) -m scripts.run_evidently
+
 #################################################################################
 # Self Documenting Commands                                                     #
 #################################################################################

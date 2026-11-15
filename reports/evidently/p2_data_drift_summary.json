@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-11-10T02:19:51.579511+00:00",
+  "dataset": "p2_mibici_features_target.parquet",
+  "dataset_sha256": "ec233a6298aedeaa6f79b6cbddae846393b56d74327ee673b708aa5f6d276bd4",
+  "reference_period": {
+    "rule": "timestamp < 2025-12-31 22:00:00",
+    "purpose": "Distribución de referencia usada para entrenar el modelo P2.",
+    "rows_sampled": 7500
+  },
+  "current_period": {
+    "rule": "timestamp >= 2026-01-01 00:00:00",
+    "purpose": "Periodo posterior disponible para representar los datos actuales de producción.",
+    "rows_sampled": 7500
+  },
+  "sampling": {
+    "method": "random reproducible after temporal split",
+    "seed": 42
+  },
+  "feature_count": 17,
+  "feature_columns": [
+    "capacity",
+    "latitude",
+    "longitude",
+    "salidas_lag_1",
+    "llegadas_lag_1",
+    "salidas_lag_2",
+    "llegadas_lag_2",
+    "salidas_lag_24",
+    "llegadas_lag_24",
+    "salidas_lag_168",
+    "llegadas_lag_168",
+    "balance_rolling_3h",
+    "balance_rolling_12h",
+    "sin_hour",
+    "cos_hour",
+    "sin_dow",
+    "cos_dow"
+  ],
+  "preparation": "src.features.p2_features.get_train_test_data",
+  "reports": {
+    "html": "p2_data_drift.html",
+    "json": "p2_data_drift.json"
+  },
+  "versions": {
+    "evidently": "0.7.23",
+    "pandas": "2.3.3"
+  },
+  "python_version": "3.12.10",
+  "elapsed_seconds": 25.8
+}
