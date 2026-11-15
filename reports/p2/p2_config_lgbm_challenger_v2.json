@@ -1,0 +1,35 @@
+{
+  "candidate_id": "lgbm_challenger_v2",
+  "description": "Modelo Challenger v2 adaptado ante drift con regularización L1/L2 y colsample=0.8",
+  "params": {
+    "n_estimators": 160,
+    "max_depth": 7,
+    "num_leaves": 40,
+    "learning_rate": 0.05,
+    "min_child_samples": 40,
+    "subsample": 0.85,
+    "colsample_bytree": 0.8,
+    "reg_alpha": 0.1,
+    "reg_lambda": 0.5,
+    "class_weight": "balanced",
+    "random_state": 42,
+    "n_jobs": -1,
+    "verbose": -1
+  },
+  "metrics": {
+    "macro_f1": 0.36676816437563375,
+    "balanced_accuracy": 0.8757683884644879,
+    "recall_normal": 0.8398442648913337,
+    "recall_desabasto": 0.881398671934101,
+    "recall_saturacion": 0.906062228568029,
+    "precision_normal": 0.9993573934285577,
+    "precision_desabasto": 0.04291596067742226,
+    "precision_saturacion": 0.05616547980366053,
+    "train_fit_duration_seconds": 16.944092988967896,
+    "test_predict_latency_ms_per_1k": 5.411703361596731
+  },
+  "train_cutoff_date": "2025-12-31 22:00:00",
+  "train_end_date": "2026-01-01 00:00:00",
+  "git_commit": "49e95792c527df952130dd9df244177d123badef",
+  "data_version": "p2-mibici-v2025_2026-ddfa3aa49c"
+}
