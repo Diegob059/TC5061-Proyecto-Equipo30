@@ -123,6 +123,11 @@ evidently:
 drift_figures:
 	$(PYTHON_INTERPRETER) scripts/generate_drift_figures.py
 
+## Generate official week 9 technical and executive report (DOCX, MD, PDF)
+.PHONY: report_week9
+report_week9:
+	$(PYTHON_INTERPRETER) scripts/generate_week9_report.py
+
 #################################################################################
 # Self Documenting Commands                                                     #
 #################################################################################
