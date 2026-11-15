@@ -108,6 +108,11 @@ deepchecks:
 evidently:
 	$(PYTHON_INTERPRETER) -m scripts.run_evidently
 
+## Generate visual ranking and distribution plots from Evidently drift audit
+.PHONY: drift_figures
+drift_figures:
+	$(PYTHON_INTERPRETER) scripts/generate_drift_figures.py
+
 #################################################################################
 # Self Documenting Commands                                                     #
 #################################################################################
