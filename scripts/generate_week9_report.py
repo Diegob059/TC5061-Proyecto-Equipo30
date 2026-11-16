@@ -37,7 +37,7 @@ def set_cell_background(cell, fill_hex):
     tcPr.append(shd)
 
 
-def set_cell_margins(cell, top=70, bottom=70, left=110, right=110):
+def set_cell_margins(cell, top=80, bottom=80, left=120, right=120):
     tcPr = cell._tc.get_or_add_tcPr()
     tcMar = OxmlElement('w:tcMar')
     for m, val in [('top', top), ('bottom', bottom), ('left', left), ('right', right)]:
@@ -46,6 +46,97 @@ def set_cell_margins(cell, top=70, bottom=70, left=110, right=110):
         node.set(qn('w:type'), 'dxa')
         tcMar.append(node)
     tcPr.append(tcMar)
+
+
+def set_cell_border(cell, **kwargs):
+    """Configura bordes XML de celda (val, sz, space, color)."""
+    tcPr = cell._tc.get_or_add_tcPr()
+    tcBorders = parse_xml(
+        f'<w:tcBorders {nsdecls("w")}>\n'
+        f'  <w:top w:val="{kwargs.get("top", {}).get("val", "none")}" w:sz="{kwargs.get("top", {}).get("sz", "4")}" w:space="0" w:color="{kwargs.get("top", {}).get("color", "auto")}"/>\n'
+        f'  <w:left w:val="{kwargs.get("left", {}).get("val", "none")}" w:sz="{kwargs.get("left", {}).get("sz", "4")}" w:space="0" w:color="{kwargs.get("left", {}).get("color", "auto")}"/>\n'
+        f'  <w:bottom w:val="{kwargs.get("bottom", {}).get("val", "none")}" w:sz="{kwargs.get("bottom", {}).get("sz", "4")}" w:space="0" w:color="{kwargs.get("bottom", {}).get("color", "auto")}"/>\n'
+        f'  <w:right w:val="{kwargs.get("right", {}).get("val", "none")}" w:sz="{kwargs.get("right", {}).get("sz", "4")}" w:space="0" w:color="{kwargs.get("right", {}).get("color", "auto")}"/>\n'
+        f'</w:tcBorders>'
+    )
+    tcPr.append(tcBorders)
+
+
+def add_callout(doc, title: str, text: str, bg_hex="F0F9FF", border_hex="003366"):
+    """Inserta una caja de llamada/resumen ejecutivo con borde izquierdo grueso."""
+    table = doc.add_table(rows=1, cols=1)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    cell = table.cell(0, 0)
+    cell.width = Inches(6.8)
+    set_cell_background(cell, bg_hex)
+    set_cell_margins(cell, top=100, bottom=100, left=160, right=140)
+
+    tcPr = cell._tc.get_or_add_tcPr()
+    borders = parse_xml(
+        f'<w:tcBorders {nsdecls("w")}>\n'
+        f'  <w:top w:val="none"/>\n'
+        f'  <w:left w:val="single" w:sz="24" w:space="0" w:color="{border_hex}"/>\n'
+        f'  <w:bottom w:val="none"/>\n'
+        f'  <w:right w:val="none"/>\n'
+        f'</w:tcBorders>'
+    )
+    tcPr.append(borders)
+
+    p = cell.paragraphs[0]
+    p.paragraph_format.line_spacing = 1.15
+    p.paragraph_format.space_after = Pt(2)
+    r_title = p.add_run(f"📌 {title}\n")
+    r_title.font.name = 'Arial'
+    r_title.font.size = Pt(10)
+    r_title.font.bold = True
+    r_title.font.color.rgb = AZUL_TEC
+
+    r_text = p.add_run(text)
+    r_text.font.name = 'Arial'
+    r_text.font.size = Pt(9.5)
+    r_text.font.color.rgb = GRIS_TEXTO
+
+    p_spacer = doc.add_paragraph()
+    p_spacer.paragraph_format.space_before = Pt(0)
+    p_spacer.paragraph_format.space_after = Pt(2)
+
+
+def add_figure_with_caption(doc, img_path: Path, caption: str, width=Inches(5.7)):
+    """Inserta imagen centrada con su pie de figura formal."""
+    if not img_path.exists():
+        return
+    p_img = doc.add_paragraph()
+    p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_img.paragraph_format.space_before = Pt(6)
+    p_img.paragraph_format.space_after = Pt(2)
+    p_img.add_run().add_picture(str(img_path), width=width)
+
+    p_cap = doc.add_paragraph()
+    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_cap.paragraph_format.space_before = Pt(0)
+    p_cap.paragraph_format.space_after = Pt(6)
+    r_cap = p_cap.add_run(caption)
+    r_cap.font.name = 'Arial'
+    r_cap.font.size = Pt(9)
+    r_cap.font.italic = True
+    r_cap.font.color.rgb = RGBColor(100, 116, 139)
+
+
+def add_custom_heading(doc, text: str, level: int = 1):
+    h = doc.add_heading(text, level=level)
+    h.paragraph_format.keep_with_next = True
+    h.paragraph_format.space_before = Pt(14 if level == 1 else 9)
+    h.paragraph_format.space_after = Pt(3)
+    for run in h.runs:
+        run.font.name = 'Arial'
+        run.font.bold = True
+        if level == 1:
+            run.font.size = Pt(13)
+            run.font.color.rgb = AZUL_TEC
+        else:
+            run.font.size = Pt(11)
+            run.font.color.rgb = AZUL_TEC
+    return h
 
 
 def generate_combined_ab_figure() -> Path:
@@ -78,9 +169,47 @@ def build_docx_report() -> Path:
         section.left_margin = Inches(0.8)
         section.right_margin = Inches(0.8)
 
+        # Header institucional
+        header = section.header
+        p_head = header.paragraphs[0]
+        p_head.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        r_head = p_head.add_run("TECNOLÓGICO DE MONTERREY — MIAA  |  TC5061: MLOps")
+        r_head.font.name = 'Arial'
+        r_head.font.size = Pt(8.5)
+        r_head.font.color.rgb = RGBColor(148, 163, 184)
+
+        # Footer con paginación dinámica XML
+        footer = section.footer
+        p_foot = footer.paragraphs[0]
+        p_foot.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        r_fl = p_foot.add_run("TC5061 Entregable 8: Monitoreo y Drift & A/B Testing  |  Equipo 30\t")
+        r_fl.font.name = 'Arial'
+        r_fl.font.size = Pt(8.5)
+        r_fl.font.color.rgb = RGBColor(148, 163, 184)
+
+        r_p1 = p_foot.add_run("Página ")
+        r_p1.font.name = 'Arial'
+        r_p1.font.size = Pt(8.5)
+        r_p1.font.color.rgb = RGBColor(100, 116, 139)
+        fld1 = parse_xml(r'<w:fldChar %s w:fldCharType="begin"/>' % nsdecls('w'))
+        instr1 = parse_xml(r'<w:instrText %s xml:space="preserve"> PAGE </w:instrText>' % nsdecls('w'))
+        fld2 = parse_xml(r'<w:fldChar %s w:fldCharType="separate"/>' % nsdecls('w'))
+        fld3 = parse_xml(r'<w:fldChar %s w:fldCharType="end"/>' % nsdecls('w'))
+        r_p1._r.extend([fld1, instr1, fld2, fld3])
+
+        r_p2 = p_foot.add_run(" de ")
+        r_p2.font.name = 'Arial'
+        r_p2.font.size = Pt(8.5)
+        r_p2.font.color.rgb = RGBColor(100, 116, 139)
+        fld4 = parse_xml(r'<w:fldChar %s w:fldCharType="begin"/>' % nsdecls('w'))
+        instr2 = parse_xml(r'<w:instrText %s xml:space="preserve"> NUMPAGES </w:instrText>' % nsdecls('w'))
+        fld5 = parse_xml(r'<w:fldChar %s w:fldCharType="separate"/>' % nsdecls('w'))
+        fld6 = parse_xml(r'<w:fldChar %s w:fldCharType="end"/>' % nsdecls('w'))
+        r_p2._r.extend([fld4, instr2, fld5, fld6])
+
     normal_style = doc.styles['Normal']
     normal_style.font.name = 'Arial'
-    normal_style.font.size = Pt(10.5)
+    normal_style.font.size = Pt(11)
     normal_style.font.color.rgb = GRIS_TEXTO
     normal_style.paragraph_format.line_spacing = 1.15
     normal_style.paragraph_format.space_after = Pt(4)
@@ -126,7 +255,7 @@ def build_docx_report() -> Path:
     for i, (k, v) in enumerate(meta_data):
         row = table_meta.rows[i]
         c0, c1 = row.cells[0], row.cells[1]
-        c0.width, c1.width = Inches(2.2), Inches(4.5)
+        c0.width, c1.width = Inches(2.2), Inches(4.6)
         c0.text, c1.text = k, v
         c0.paragraphs[0].runs[0].font.bold = True
         c0.paragraphs[0].runs[0].font.size = Pt(9)
@@ -174,128 +303,116 @@ def build_docx_report() -> Path:
     doc.add_paragraph()
 
     # 3. SECCIÓN 1: INTRODUCCIÓN Y METODOLOGÍA DE DATOS
-    p_s1 = doc.add_paragraph()
-    r_s1 = p_s1.add_run("1. Metodología y Definición de Conjuntos de Datos")
-    r_s1.font.size = Pt(12)
-    r_s1.font.bold = True
-    r_s1.font.color.rgb = AZUL_TEC
+    add_custom_heading(doc, "1. Metodología y Definición de Conjuntos de Datos", level=1)
 
     doc.add_paragraph(
-        "En sistemas de aprendizaje automático desplegados en producción, el desempeño del modelo no es estático: "
-        "la dinámica urbana, estacionalidades y cambios de hábitos introducen perturbaciones en la distribución de entrada "
-        "(data drift) y en las relaciones funcionales (concept drift). El presente trabajo añade al proyecto "
+        "En sistemas de aprendizaje automático desplegados en entornos de producción, el desempeño predictivo "
+        "no permanece estático a lo largo del tiempo. Las transformaciones de movilidad urbana, las variaciones "
+        "meteorológicas, las fluctuaciones demográficas y los cambios estacionales introducen perturbaciones tanto en la "
+        "distribución marginal de las características de entrada (data drift o covariate shift) como en la relación condicional "
+        "entre los predictores y la variable objetivo (concept drift). El presente trabajo añade formalmente al proyecto "
         "MiBici Guadalajara la capa de observabilidad continua y experimentación controlada (Entregable 8). "
-        "Se evalúa el modelo multiclase de riesgo operativo a 2 horas (Pregunta 2: Normal = 0, Desabasto = 1, Saturación = 2)."
+        "El objeto central de análisis es el modelo multiclase de riesgo operativo a 2 horas (Pregunta 2: 0: Normal, 1: Desabasto, 2: Saturación)."
     )
 
     doc.add_paragraph(
-        "Para simular un entorno de producción fidedigno y auditable, se establecieron dos ventanas temporales rigurosas "
-        "con base en los datos abiertos oficiales de MiBici (https://mibici.net/es/datos-abiertos/):"
+        "Para simular un entorno de producción fidedigno y auditable sin incurrir en fuga temporal (leakage), "
+        "se definieron dos ventanas temporales rigurosas a partir del portal de datos abiertos oficial de MiBici (https://mibici.net/es/datos-abiertos/):"
     )
 
     p_b1 = doc.add_paragraph(style='List Bullet')
     p_b1.add_run("Conjunto de Referencia (Baseline 2025): ").font.bold = True
     p_b1.add_run(
-        "Periodo histórico desde el 01/01/2025 hasta el 31/12/2025 (timestamp < 2025-12-31 22:00:00). "
-        "Contiene 4,037,300 registros horarios y representa el régimen basal bajo el cual se entrenó el Champion actual. "
-        "Para auditoría se extrajo una muestra estratificada reproducible de 7,500 observaciones."
+        "Abarca la totalidad del año histórico 2025 (desde el 01/01/2025 hasta el 31/12/2025 22:00:00), con un volumen de "
+        "4,037,300 registros horarios a nivel estación. Representa el régimen operativo de entrenamiento bajo el cual se optimizó "
+        "el estimador Champion de producción (LightGBM). Para la auditoría de drift se extrajo una muestra estratificada representativa "
+        "de 7,500 observaciones."
     )
 
     p_b2 = doc.add_paragraph(style='List Bullet')
     p_b2.add_run("Conjunto Actual (Producción 2026): ").font.bold = True
     p_b2.add_run(
-        "Periodo posterior continuo disponible desde el 01/01/2026 hasta el 30/09/2026 (timestamp >= 2026-01-01 00:00:00), "
-        "con 3,078,500 registros horarios. Representa el flujo real de datos en servicio en un nuevo ciclo anual. "
-        "Se muestrearon 7,500 observaciones para el análisis de drift y 50,000 para la suite de A/B testing."
+        "Abarca el periodo posterior en servicio desde el 01/01/2026 hasta el 30/09/2026, con 3,078,500 registros horarios. "
+        "Representa datos reales no vistos durante el entrenamiento original. Para la auditoría de drift se utilizó una muestra "
+        "estratificada de 7,500 observaciones y para la suite de A/B testing se emplearon 50,000 registros para garantizar alta potencia estadística."
     )
 
     # 4. SECCIÓN 2: REPORTE DE DATA DRIFT CON EVIDENTLY
-    p_s2 = doc.add_paragraph()
-    r_s2 = p_s2.add_run("2. Monitoreo y Auditoría de Data Drift con Evidently AI")
-    r_s2.font.size = Pt(12)
-    r_s2.font.bold = True
-    r_s2.font.color.rgb = AZUL_TEC
+    add_custom_heading(doc, "2. Monitoreo y Auditoría de Data Drift con Evidently AI", level=1)
 
     doc.add_paragraph(
-        "Se integró Evidently AI (evidently==0.7.23) para contrastar las distribuciones empíricas de las 17 variables predictoras. "
-        "Se aplicó la distancia Wasserstein normalizada para variables continuas y la divergencia Jensen-Shannon para discretas, "
-        "fijando el umbral crítico en 0.10 y una alerta temprana en 0.05."
+        "Se integró Evidently AI (evidently==0.7.23) para contrastar las distribuciones empíricas de las 17 variables predictoras del modelo. "
+        "Se empleó la distancia Wasserstein normalizada (Earth Mover's Distance) para variables numéricas continuas y la divergencia "
+        "Jensen-Shannon para variables discretas o de conteo. Se configuró un umbral crítico de deriva de 0.10 y un umbral de alerta temprana de 0.05."
+    )
+
+    add_callout(
+        doc,
+        title="Dictamen Ejecutivo de Observabilidad (Evidently AI)",
+        text="Auditoría completada exitosamente sobre 17 características predictoras. Tasa de Dataset Drift Crítico: 0.0% "
+             "(0/17 variables excedieron el umbral crítico de 0.10). Calidad de datos: 100% (cero valores nulos, infinitos "
+             "o tipos de datos divergentes). Las características físicas e infraestructura se mantienen estables, concentrándose "
+             "el desplazamiento en variables rodantes acumuladas.",
+        bg_hex="F0F9FF",
+        border_hex="003366"
     )
 
     fig_summary = FIGURES_DIR / "evidently_drift_summary_card.png"
-    if fig_summary.exists():
-        p_img = doc.add_paragraph()
-        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img.add_run().add_picture(str(fig_summary), width=Inches(5.5))
+    add_figure_with_caption(doc, fig_summary, "Figura 1: Ficha Ejecutiva de Auditoría de Data Drift y Calidad de Datos (Evidently AI).", width=Inches(5.7))
 
     fig_ranking = FIGURES_DIR / "evidently_drift_wasserstein_ranking.png"
-    if fig_ranking.exists():
-        p_img2 = doc.add_paragraph()
-        p_img2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img2.add_run().add_picture(str(fig_ranking), width=Inches(5.5))
+    add_figure_with_caption(doc, fig_ranking, "Figura 2: Ranking de Deriva Estadística por Distancia Wasserstein y Jensen-Shannon en las 17 Variables de P2.", width=Inches(5.7))
 
     # 5. SECCIÓN 3: INTERPRETACIÓN DEL DRIFT Y CONSECUENCIAS OPERATIVAS
-    p_s3 = doc.add_paragraph()
-    r_s3 = p_s3.add_run("3. Interpretación Técnica de Variables Afectadas e Implicaciones de Negocio")
-    r_s3.font.size = Pt(12)
-    r_s3.font.bold = True
-    r_s3.font.color.rgb = AZUL_TEC
+    add_custom_heading(doc, "3. Interpretación Técnica de Variables Afectadas e Implicaciones de Negocio", level=1)
 
     doc.add_paragraph(
-        "El dictamen global de Evidently reporta 0.0% de dataset drift crítico: ninguna característica excedió el umbral "
-        "de 0.10. Asimismo, la calidad de datos es del 100% (cero valores nulos, infinitos o no tipificados). Sin embargo, "
-        "el análisis granular evidencia un gradiente de desplazamiento focalizado en variables de balance rodante y flujos semanales:"
+        "Aunque ninguna variable sobrepasó el umbral crítico de 0.10, el ranking de deriva revela un gradiente "
+        "sistemático que demanda atención técnica:"
     )
 
     doc.add_paragraph(
-        "• Balance Rodante de 12 y 3 Horas (balance_rolling_12h: 0.0711, balance_rolling_3h: 0.0646): Son las variables con "
-        "mayor desplazamiento relativo. Miden la acumulación neta de bicicletas (llegadas - salidas). A inicios de 2026 se "
-        "observó una intensificación de la asimetría pendular en horas pico (estaciones laborales receptoras que se llenan "
-        "más rápidamente y colonias habitacionales con vaciados más acelerados). Esto ensancha las colas de la distribución empírica."
+        "• Balance Rodante de 12 y 3 Horas (balance_rolling_12h: 0.0711, balance_rolling_3h: 0.0646): Representan el mayor desplazamiento relativo. "
+        "Estas variables capturan la acumulación neta de bicicletas (llegadas menos salidas) en ventanas móviles. A inicios de 2026, la reactivación "
+        "laboral y académica en el Área Metropolitana de Guadalajara acentuó los viajes pendulares unidireccionales en horas pico. Las estaciones ubicadas "
+        "en distritos corporativos experimentaron ingresos más acelerados, mientras que estaciones habitacionales sufrieron vaciados más pronunciados, "
+        "ensanchando las colas de la distribución empírica."
     )
 
     doc.add_paragraph(
-        "• Lags Semanales (llegadas_lag_168: 0.0527, salidas_lag_168: 0.0391): El desfase entre semanas calendario de 2025 "
-        "y 2026 genera pequeñas variaciones en el ciclo de 7 días, especialmente tras periodos vacacionales."
+        "• Lags Semanales (llegadas_lag_168: 0.0527, salidas_lag_168: 0.0391): El desfase entre semanas calendario entre 2025 y 2026 genera "
+        "ligeras discrepancias en los patrones semanales de 7 días (168 horas), particularmente en torno a festividades y periodos no laborables."
     )
 
     doc.add_paragraph(
-        "• Invarianza de Infraestructura y Calendario: Variables geográficas (latitude: 0.033, longitude: 0.015), capacidad física "
-        "(capacity: 0.013) y componentes cíclicos horarios (sin/cos_hour: <0.013) se mantienen prácticamente idénticas, lo que confirma "
-        "que la red física de estaciones no ha sufrido alteraciones estructurales."
+        "• Invarianza de Infraestructura Física: Variables geográficas (latitude: 0.033, longitude: 0.015), capacidad instalada (capacity: 0.013) "
+        "y componentes cíclicos horarios (sin_hour: 0.012, cos_hour: 0.011) permanecieron casi idénticas, lo que confirma que la topología física "
+        "de la red no sufrió modificaciones estructurales."
     )
 
     doc.add_paragraph(
-        "Implicaciones Operativas: En el Centro de Control de Operaciones (CCO), un sesgo en las variables de balance acumulado "
-        "representa el riesgo de que el modelo comience a descalibrar las probabilidades predichas, subestimando desabastos en horas "
-        "críticas o generando falsas alarmas de saturación. Esto motiva la necesidad de entrenar un modelo alternativo (Challenger) "
-        "con regularización reforzada y someter ambas versiones a una prueba A/B en producción."
+        "Consecuencias Operativas en el CCO: Un sesgo en las variables de balance rodante incrementa la propensión del estimador a descalibrar "
+        "sus probabilidades a posteriori. En horas pico, el modelo podría subestimar la probabilidad de desabasto en zonas críticas o activar falsas "
+        "alarmas de saturación. Esto motivó la hipótesis de que un modelo con regularización reforzada y menor dependencia de variables acumuladas "
+        "(Challenger) podría ofrecer mayor robustez en producción."
     )
 
     fig_dist = FIGURES_DIR / "evidently_distributions_drift.png"
-    if fig_dist.exists():
-        p_img3 = doc.add_paragraph()
-        p_img3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img3.add_run().add_picture(str(fig_dist), width=Inches(5.5))
+    add_figure_with_caption(doc, fig_dist, "Figura 3: Contraste de Densidades Empíricas (KDE) entre Baseline 2025 y Producción 2026 para Variables Clave.", width=Inches(5.7))
 
     # 6. SECCIÓN 4: MODELO ALTERNATIVO Y A/B TESTING
-    p_s4 = doc.add_paragraph()
-    r_s4 = p_s4.add_run("4. Versión Alternativa (Challenger) y Resultados del A/B Testing")
-    r_s4.font.size = Pt(12)
-    r_s4.font.bold = True
-    r_s4.font.color.rgb = AZUL_TEC
+    add_custom_heading(doc, "4. Versión Alternativa (Challenger) y Resultados del A/B Testing", level=1)
 
     doc.add_paragraph(
-        "Para responder a la deriva detectada, se entrenó la Versión 2 (Challenger: lgbm_challenger_v2) incorporando: "
-        "regularización L1/L2 (reg_alpha=0.1, reg_lambda=0.5), submuestreo de características (colsample_bytree=0.80) para "
-        "mitigar la dependencia de balances rodantes, bagging (subsample=0.85) y profundidad acotada (depth=7, leaves=40). "
-        "Esta versión se registró formalmente en el Model Registry de MLflow como Versión 2 con alias @challenger, manteniendo "
-        "la Versión 1 como @champion."
+        "Para responder al drift detectado, se formuló una versión alternativa (Versión 2 Challenger: lgbm_challenger_v2) "
+        "optimizada con LightGBM. Se aplicó regularización L1 y L2 (reg_alpha=0.1, reg_lambda=0.5), submuestreo aleatorio de columnas "
+        "(colsample_bytree=0.80) para forzar al modelo a no depender exclusivamente de los balances rodantes, bagging con reemplazo "
+        "(subsample=0.85) y límites en profundidad (max_depth=7, num_leaves=40). El modelo se registró formalmente en el Model Registry "
+        "de MLflow (mibici-equipo30-p2-riesgo) como Versión 2 con alias @challenger, manteniendo la Versión 1 original como @champion."
     )
 
     doc.add_paragraph(
-        "Ambos modelos fueron evaluados sobre una muestra estratificada de 50,000 registros del periodo actual (Año 2026). "
-        "La Tabla 1 resume el contraste de métricas obtenido:"
+        "Ambas versiones fueron sometidas a una prueba A/B en condiciones de producción sobre 50,000 registros horarios estratificados del año 2026:"
     )
 
     table_ab = doc.add_table(rows=10, cols=5)
@@ -334,57 +451,68 @@ def build_docx_report() -> Path:
     doc.add_paragraph()
 
     fig_ab_panel = FIGURES_DIR / "ab_test_combined_panel.png"
-    if fig_ab_panel.exists():
-        p_img4 = doc.add_paragraph()
-        p_img4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_img4.add_run().add_picture(str(fig_ab_panel), width=Inches(5.5))
+    add_figure_with_caption(doc, fig_ab_panel, "Figura 4: Resultados Integrales de A/B Testing: Métricas Comparativas y Matrices de Confusión Normalizadas en Producción 2026.", width=Inches(5.7))
 
-    doc.add_paragraph(
-        "Contraste Estadístico: La prueba de McNemar confirmó que la divergencia en errores es estadísticamente significativa "
-        "(chi-cuadrado = 151.73, p < 0.001). El análisis bootstrap al 95% de confianza (400 réplicas) para la diferencia de Macro F1 "
-        "arrojó un intervalo de [-0.0051, -0.0031], confirmando que el Champion v1 conserva superioridad en balance multiclase."
+    add_callout(
+        doc,
+        title="Contraste Estadístico y Análisis de Hipótesis",
+        text="La prueba de McNemar sobre predicciones concordantes y discordantes confirmó que la diferencia en clasificación "
+             "es estadísticamente significativa (chi-cuadrado = 151.73, p < 0.001). El remuestreo bootstrap al 95% de confianza "
+             "(400 réplicas) para Delta Macro F1 estableció un intervalo estrictamente negativo [-0.0051, -0.0031], confirmando "
+             "que la Versión 1 Champion conserva una superioridad sistemática en balance multiclase.",
+        bg_hex="F8FAFC",
+        border_hex="003366"
     )
 
     # 7. SECCIÓN 5: RECOMENDACIÓN DE CONTINUOUS TRAINING
-    p_s5 = doc.add_paragraph()
-    r_s5 = p_s5.add_run("5. Decisión de Versión y Recomendación de Continuous Training (CT)")
-    r_s5.font.size = Pt(12)
-    r_s5.font.bold = True
-    r_s5.font.color.rgb = AZUL_TEC
+    add_custom_heading(doc, "5. Decisión de Versión y Recomendación de Continuous Training (CT)", level=1)
 
     doc.add_paragraph(
-        "Decisión del A/B Testing: Se determina conservar formalmente la Versión 1 (lgbm_profundo) con el alias de producción @champion. "
-        "La justificación técnica y de negocio radica en que el Champion sostiene un Recall en Desabasto superior (88.08% vs. 87.56%) "
-        "y un Macro F1 superior (0.3704 vs. 0.3663). En la operación de MiBici, el desabasto representa la falla de servicio más crítica "
-        "(el usuario llega a la estación y no encuentra bicicleta para trasladarse), por lo que sacrificar medio punto porcentual de recall "
-        "a cambio de menor latencia (3.5 ms vs. 4.2 ms) no está justificado operativamente."
+        "Decisión del A/B Testing: Se determina de manera concluyente MANTENER la Versión 1 (lgbm_profundo) con el alias activo "
+        "@champion en producción. La justificación de negocio y operativa es determinante: el Champion sostiene un Recall en Desabasto "
+        "superior (88.08% frente a 87.56%) y un Macro F1 superior (0.3704 frente a 0.3663). En un sistema de micromovilidad pública como MiBici, "
+        "el desabasto es la falla más lesiva para el usuario (llegar y no encontrar bicicleta), mientras que la saturación permite al menos "
+        "desviarse a una estación vecina. Sacrificar 0.52 puntos porcentuales de recall en desabasto para ganar 0.73 ms de latencia "
+        "(3.50 ms vs. 4.23 ms, ambas muy por debajo del SLA de 100 ms) representa una degradación inaceptable del servicio."
     )
 
     doc.add_paragraph(
-        "Estrategia de Continuous Training (CT) Propuesta: Para garantizar la vigencia del modelo a largo plazo, se define la siguiente arquitectura:"
+        "Estrategia de Continuous Training (CT) Propuesta: Para garantizar la vigencia del modelo conforme se acumulen nuevos datos en 2026, "
+        "se define la siguiente arquitectura de automatización MLOps:"
     )
 
     p_ct1 = doc.add_paragraph(style='List Bullet')
     p_ct1.add_run("Disparadores Basados en Drift (Evidently AI): ").font.bold = True
-    p_ct1.add_run("Auditoría semanal programada. Si balance_rolling_12h excede 0.10 o más del 25% de variables superan 0.08, se gatilla el reentrenamiento automático.")
+    p_ct1.add_run("Ejecución semanal automática de DataDriftPreset. Si balance_rolling_12h excede una distancia Wasserstein de 0.10 o más del 25% de las características superan 0.08, se gatilla automáticamente el reentrenamiento.")
 
     p_ct2 = doc.add_paragraph(style='List Bullet')
-    p_ct2.add_run("Disparadores de Rendimiento Operativo: ").font.bold = True
-    p_ct2.add_run("Si el Recall en Desabasto a 14 días cae de 85.0% o el Macro F1 de 0.35, se activa reentrenamiento correctivo.")
+    p_ct2.add_run("Disparadores de Desempeño Operativo: ").font.bold = True
+    p_ct2.add_run("Si el Recall acumulado a 14 días para la clase desabasto cae por debajo del 85.0% o el Macro F1 disminuye de 0.35, se activa un pipeline de reentrenamiento correctivo de alta prioridad.")
 
     p_ct3 = doc.add_paragraph(style='List Bullet')
     p_ct3.add_run("Ventana Temporal y Regularización Híbrida: ").font.bold = True
-    p_ct3.add_run("Ventana rodante de 12 meses con ponderación temporal decrescente, incorporando la regularización L1/L2 y colsample=0.80 explorados en el Challenger v2.")
+    p_ct3.add_run("Ventana rodante de 12 meses con ponderación exponencial decreciente para dar mayor peso a los meses recientes, adoptando la regularización L1/L2 y colsample=0.80 explorados en el Challenger v2.")
 
     p_ct4 = doc.add_paragraph(style='List Bullet')
-    p_ct4.add_run("Salvaguardas de Despliegue: ").font.bold = True
-    p_ct4.add_run("Ningún modelo generado por CT sustituirá al Champion sin validar cero errores de esquema, latencia < 10 ms y paridad estadística en Recall de Desabasto en un A/B test canario de 72 horas.")
+    p_ct4.add_run("Compuertas de Despliegue y Gobernanza: ").font.bold = True
+    p_ct4.add_run("Ningún modelo candidato sustituirá al Champion activo sin satisfacer: (1) validación de esquema con cero errores, (2) latencia de inferencia menor a 10 ms por lote, y (3) paridad o superioridad estadística en Recall de Desabasto en un A/B test canario del 10% del tráfico durante 72 horas.")
+
+    add_callout(
+        doc,
+        title="Protocolo de Gobernanza MLOps para Reentrenamiento Continuo",
+        text="El modelo reentrenado se registrará en MLflow Model Registry como nueva versión con alias @candidate. "
+             "Solo tras superar las 3 compuertas automáticas se ejecutará la transición atómica del alias @champion, "
+             "notificando al equipo de MLOps y registrando los artefactos de auditoría.",
+        bg_hex="F0FDF4",
+        border_hex="16A34A"
+    )
 
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
     docx_path = DOCS_DIR / "TC5061_Drift_ABTest_Equipo30.docx"
     doc.save(docx_path)
     print(f"✓ Documento DOCX guardado en: {docx_path}")
     return docx_path
+
 
 
 def build_markdown_report() -> Path:
