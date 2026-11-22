@@ -39,6 +39,7 @@ TC5061-Proyecto-Equipo30/
 ├── setup.py                  <- Setup clásico de empaquetado pip editable (CCDS v1).
 ├── Containerfile             <- Definición de contenedor OCI estándar (Podman).
 ├── Dockerfile                <- Definición de contenedor OCI estándar con libgomp1 y HEALTHCHECK (Docker).
+├── docker-compose.yml        <- Orquestación local de la API y MLflow con almacenamiento persistente.
 ├── api/                      <- Microservicio REST para inferencia en tiempo real (Semana 8).
 │   ├── main.py               <- Aplicación FastAPI, endpoints (/health, /model-info, /predict) y esquemas Pydantic v2.
 │   └── model_loader.py       <- Carga desacoplada del modelo @champion desde MLflow Model Registry.
@@ -485,7 +486,43 @@ El [reporte del equipo corregido](docs/TC5061_Reporte_Testing_Seguridad_Equipo30
 
 La API sirve el modelo de clasificación de riesgo de P2 desde MLflow Model Registry. Expone `POST /predict`, valida las 17 variables predictoras y devuelve `{"prediction": 0}`, `1` o `2`. `Dockerfile` y `Containerfile` usan el mismo contenido ejecutable, Python 3.12 y `libgomp1` para LightGBM.
 
-### 8.1 Preparar MLflow y el modelo
+### 8.0 Ejecutar la API y MLflow con Docker Compose
+
+Se necesita Docker con Compose y un modelo P2 registrado con alias `champion`. Los servicios usan una red interna: la API accede a MLflow en `http://mlflow:5000`. MLflow guarda su base SQLite y sus artefactos en el volumen persistente `mlflow_data`. Por defecto, la API y MLflow se publican solo en la máquina local, en los puertos 8000 y 5001, respectivamente.
+
+**Preparación única de un volumen nuevo.** El registry del volumen empieza vacío; los modelos, la base y los datos locales no están en Git y el registry del host no se importa automáticamente. Primero inicia solo MLflow:
+
+```bash
+docker compose up -d --build mlflow
+docker compose ps
+```
+
+Cuando MLflow esté saludable, prepara las características de P2 y ejecuta el entrenamiento desde el entorno Python del proyecto contra ese servidor. Usa `make data` si aún no existe el Parquet procesado:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5001
+python -m src.models.p2_train
+python -m src.models.p2_register --run-id <selected_run_id> --reason "Champion seleccionado en la comparación de P2"
+```
+
+En PowerShell, en lugar de `export`, usa `$env:MLFLOW_TRACKING_URI = "http://127.0.0.1:5001"`. Obtén `selected_run_id` de `reports/p2/seleccion.json` generado por ese entrenamiento; no uses un ID de otro servidor. La primera preparación requiere los datos y dependencias del proyecto descritos en la sección 5.
+
+**Arranque habitual con un solo comando**, después de registrar el modelo en ese volumen:
+
+```bash
+docker compose up -d --build
+```
+
+Compose espera a que MLflow esté saludable antes de iniciar la API. Si falta el modelo o sus artefactos, la API no puede arrancar y se reintentará; consulta `docker compose logs api` en vez de interpretar el estado de MLflow como prueba de que la API funciona. Comprueba ambos servicios y ejecuta la petición de ejemplo de la sección 8.3:
+
+```bash
+docker compose ps
+curl http://127.0.0.1:8000/health
+```
+
+`docker compose down` detiene los servicios sin borrar el volumen. **No uses `docker compose down -v` salvo que quieras eliminar el registry y los artefactos.** Las variables `MLFLOW_PORT` y `API_PORT` cambian los puertos publicados; `MODEL_URI` permite seleccionar otro alias o versión en ese registry. Si cambias `MLFLOW_PORT`, usa el mismo puerto en `MLFLOW_TRACKING_URI` del entrenamiento. Si el alias apunta a una nueva versión, recarga la API con `docker compose restart api`; si cambias la variable `MODEL_URI`, vuelve a ejecutar `docker compose up -d`.
+
+### 8.1 Preparar MLflow y el modelo manualmente
 
 Se necesita un motor Docker o Podman activo y el modelo registrado como `mibici-equipo30-p2-riesgo`, con alias `champion`. Los pasos de preparación de datos, entrenamiento y registro de P2 están en la sección 5. Los datos y los artefactos del modelo se conservan fuera de Git.
 
