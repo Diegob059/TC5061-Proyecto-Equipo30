@@ -1,0 +1,243 @@
+name: CI/CD — MiBici MLOps Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "fix/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Matriz de pruebas automatizadas (Unitarias, API, Drift, Reproducibilidad y FinOps)
+  # ---------------------------------------------------------------------------
+  test-suite:
+    name: Tests (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - api-and-ops
+          - pipelines-and-validation
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12 con caché pip
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-api.txt
+
+      - name: Instalar dependencias fijadas del proyecto
+        run: |
+          python -m pip install -U pip wheel
+          python -m pip install setuptools==80.10.2
+          python -m pip install -r requirements.txt
+
+      - name: Ejecutar suite API, Verificador, Locust y FinOps
+        if: matrix.suite == 'api-and-ops'
+        run: |
+          python -m pytest \
+            tests/test_api.py \
+            tests/test_api_verifier.py \
+            tests/test_ab_testing.py \
+            tests/test_operacion_finops.py \
+            -v --junitxml=junit-api-ops.xml
+
+      - name: Ejecutar suite Pipelines, Validación de Datos y Reproducibilidad
+        if: matrix.suite == 'pipelines-and-validation'
+        run: |
+          python -m pytest \
+            tests/test_data.py \
+            tests/test_dataset.py \
+            tests/test_features.py \
+            tests/test_p1_experiments.py \
+            tests/test_p2_data.py \
+            tests/test_p2_features.py \
+            tests/test_p2_train.py \
+            tests/test_p3_train.py \
+            tests/test_p3_register.py \
+            tests/test_reproducibility.py \
+            tests/test_data_deepchecks.py \
+            tests/test_evidently_report.py \
+            -v --junitxml=junit-pipelines.xml
+
+      - name: Subir artefacto de resultados JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.suite }}
+          path: junit-*.xml
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Construcción de imagen Docker, levantamiento con Docker Compose y smoke test E2E
+  # ---------------------------------------------------------------------------
+  build-and-validate-compose:
+    name: Build Docker Image & Validate Compose E2E
+    runs-on: ubuntu-latest
+    needs: test-suite
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Validar sintaxis y esquema de docker-compose.yml
+        run: docker compose config --quiet
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir imagen de la API con caché de capas GHA
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: |
+            mibici-risk-api:compose
+            mibici-risk-api:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Levantar servicio MLflow con Docker Compose y esperar estado healthy
+        run: |
+          docker compose up -d --no-build mlflow
+          for i in $(seq 1 40); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q mlflow) 2>/dev/null || echo "starting")
+            echo "Intento $i — MLflow health: $STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              break
+            fi
+            sleep 3
+          done
+          docker compose ps
+          curl -fsS http://127.0.0.1:5001/health
+
+      - name: Sembrar modelo LightGBM de prueba en MLflow Registry (@champion)
+        run: |
+          MLFLOW_CID=$(docker compose ps -q mlflow)
+          docker cp scripts/seed_ci_model.py "${MLFLOW_CID}:/tmp/seed_ci_model.py"
+          docker exec "${MLFLOW_CID}" python /tmp/seed_ci_model.py --tracking-uri http://127.0.0.1:5000
+
+      - name: Levantar stack completo con un solo comando (docker compose up -d)
+        run: |
+          docker compose up -d --no-build
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q api) 2>/dev/null || echo "starting")
+            echo "Intento $i — API health: $STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              break
+            fi
+            sleep 2
+          done
+          docker compose ps
+
+      - name: Configurar Python para verificación HTTP y smoke test de carga Locust
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-api.txt
+
+      - name: Verificar los 10 casos del contrato API + inspección de contenedor
+        run: |
+          python -m pip install --quiet requests==2.34.2 locust==2.33.2
+          API_NAME=$(docker inspect --format='{{.Name}}' $(docker compose ps -q api) | sed 's|^/||')
+          python -m scripts.verify_container_api \
+            --base-url http://127.0.0.1:8000 \
+            --container-engine docker \
+            --container-name "${API_NAME}" \
+            --output-json ci_container_verification.json
+
+      - name: Ejecutar prueba de humo de carga con Locust (headless) y capturar docker stats
+        run: |
+          locust -f load_tests/locustfile.py \
+            --host http://127.0.0.1:8000 \
+            --headless -u 10 -r 5 -t 10s \
+            --csv ci_locust \
+            --only-summary
+          echo "### Resumen de Recursos de Contenedores (CI)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "### Resumen de Carga Locust (CI Smoke Test)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+          cat ci_locust_stats.csv >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir evidencia de verificación de contenedor y Locust CI
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-compose-verification
+          path: |
+            ci_container_verification.json
+            ci_locust_*.csv
+          if-no-files-found: ignore
+
+      - name: Mostrar logs de Compose en caso de error
+        if: failure()
+        run: docker compose logs --tail=100
+
+      - name: Apagar y limpiar contenedores de CI
+        if: always()
+        run: docker compose down -v
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Publicación automática en GitHub Container Registry (solo en merge a main)
+  # ---------------------------------------------------------------------------
+  publish-image:
+    name: Publish Container Image to GHCR
+    runs-on: ubuntu-latest
+    needs: build-and-validate-compose
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Iniciar sesión en GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extraer metadatos y etiquetas de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/mibici-risk-api
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Construir y publicar imagen OCI en GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

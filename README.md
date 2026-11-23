@@ -638,7 +638,88 @@ make stop_container CONTAINER_ENGINE=podman
 
 ---
 
-## 🌿 9. Flujo de Trabajo con Git y GitHub (GitHub Flow)
+## ⚙️ 9. Orquestación, CI/CD, Pruebas de Carga y FinOps (Semana 10)
+
+Esta sección documenta la consolidación operativa del sistema (Entregable 7 / Actividad 9): orquestación reproducible con Docker Compose, pipeline automatizado en GitHub Actions, evaluación bajo carga con Locust, monitoreo de contenedores (`docker stats`) y análisis FinOps de costo por inferencia.
+
+### 9.1 Orquestación Completa con Docker Compose (`docker-compose.yml`)
+
+El archivo [`docker-compose.yml`](docker-compose.yml) levanta en conjunto `mlflow` y `api` sobre una red dedicada (`mibici_net`), volumen persistente (`mlflow_data`), comprobaciones `healthcheck` en ambos contenedores y límites de CPU/memoria parametrizables mediante [`.env.example`](.env.example):
+
+```bash
+# 1. Copiar variables opcionales (puertos y límites de CPU/RAM)
+cp .env.example .env
+
+# 2. (Primera vez con volumen vacío) Levantar MLflow y registrar el modelo @champion
+docker compose up -d --build mlflow
+# Opción producción (ver sección 5): entrenar/registrar p2_train + p2_register
+# Opción rápida de validación/CI (sembrar modelo LightGBM firmado):
+MLFLOW_CID=$(docker compose ps -q mlflow)
+docker cp scripts/seed_ci_model.py "${MLFLOW_CID}:/tmp/seed_ci_model.py"
+docker exec "${MLFLOW_CID}" python /tmp/seed_ci_model.py --tracking-uri http://127.0.0.1:5000
+
+# 3. Arrancar todo el stack con un solo comando y validar salud
+make compose_up        # equivale a: docker compose up -d --build
+docker compose ps
+docker stats --no-stream
+
+# 4. Detener servicios preservando el volumen del Model Registry
+make compose_down      # equivale a: docker compose down
+```
+
+### 9.2 Pipeline de CI/CD con GitHub Actions (`.github/workflows/ci-cd.yml`)
+
+El flujo [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) se ejecuta automáticamente en cada `push` y `pull_request` hacia `main` (así como bajo demanda con `workflow_dispatch`):
+
+1. **`test-suite` (matriz paralela):** Ejecuta `api-and-ops` (API, verificador, A/B testing, Compose, Locust y FinOps) y `pipelines-and-validation` (ingesta, features, P1/P2/P3, DeepChecks, Evidently y reproducibilidad) en Python 3.12 con caché `pip` y artefactos JUnit.
+2. **`build-and-validate-compose`:** Valida `docker compose config`, construye la imagen OCI con Docker Buildx y caché de capas GHA (`type=gha`), levanta `mlflow` + `api` con `docker compose`, ejecuta las 10 comprobaciones HTTP/contenedor de `scripts/verify_container_api.py`, corre una prueba de humo con Locust y publica `docker stats` en `$GITHUB_STEP_SUMMARY`.
+3. **`publish-image`:** En merges a `main`, construye y publica automáticamente la imagen en GitHub Container Registry (`ghcr.io/<owner>/tc5061-proyecto-equipo30/mibici-risk-api:latest`).
+
+### 9.3 Pruebas de Carga con Locust y Monitoreo (`docker stats`)
+
+El escenario [`load_tests/locustfile.py`](load_tests/locustfile.py) simula peticiones concurrentes del Centro de Control Operativo (CCO) sobre perfiles realistas del AMG (35% pico desabasto, 35% pico saturación, 30% valle normal). Para correr la batería completa escalonada (10, 50 y 100 usuarios) con telemetría simultánea de `docker stats`:
+
+```bash
+# Ejecución automatizada escalonada + docker stats (guarda CSV/HTML/JSON en reports/semana10/)
+make load_test API_BASE_URL=http://127.0.0.1:8000
+
+# O modo interactivo con UI web de Locust en http://localhost:8089
+locust -f load_tests/locustfile.py --host http://127.0.0.1:8000
+```
+
+| Escenario | Peticiones | RPS Total | Lat. Media (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Error % | API CPU Med/Pico | API RAM Pico |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | ---: |
+| Carga Baja (10 usuarios, 30s) | 914 | 31.5 | 8.1 | 7 | 17 | 24 | 0.00% | 15.9% / 24.0% | 171.6 MiB |
+| Carga Media (50 usuarios, 45s) | 6,873 | 156.0 | 6.8 | 5 | 17 | 38 | 0.00% | 40.1% / 50.5% | 170.9 MiB |
+| Carga Alta / Estrés (100 usuarios, 45s) | 13,555 | 307.5 | 13.5 | 9 | 42 | 73 | 0.00% | 70.3% / 79.6% | 173.1 MiB |
+
+![Desempeño de pruebas de carga con Locust](reports/figures/semana10_locust_performance.png)
+![Monitoreo de recursos con docker stats](reports/figures/semana10_docker_stats.png)
+
+### 9.4 Análisis FinOps: Costo por Inferencia y Reporte Oficial
+
+Para recalcular el análisis de costos, regenerar las 4 figuras y compilar el reporte oficial (DOCX, MD y PDF de 5 cuartillas en Arial 11, interlineado 1.15):
+
+```bash
+make finops
+make report_week10
+```
+
+| Topología de Nube (us-east-1 / us-central1) | USD/mes (16.3M inf) | USD/1M inf (16.3M) | USD/1M inf (3.26M) | Ahorro vs. Base |
+| :--- | ---: | ---: | ---: | :---: |
+| AWS ECS Fargate x86_64 (1 vCPU / 2 GB, 24/7 Base) | $36.04 | $2.21 | $11.06 | Base |
+| AWS ECS Fargate ARM64 Graviton (0.5 vCPU / 1 GB, Right-sized) | $14.42 | $0.89 | $4.43 | -60.0% |
+| AWS ECS Fargate ARM64 (0.5 vCPU / 1 GB, 19h/día operativo) | $11.41 | $0.70 | $3.50 | -68.3% |
+| AWS EC2 `c7g.medium` ARM64 (1-yr Savings Plan) | $16.64 | $1.02 | $5.11 | -53.8% |
+| GCP Cloud Run Serverless (1 vCPU / 512 MB, Scale-to-Zero) | $12.68 | $0.78 | $0.78 | -64.8% (-93.0% en 5-min) |
+
+![Análisis FinOps de costo por inferencia](reports/figures/semana10_finops_costs.png)
+
+El reporte oficial de la Semana 10 se conserva en [PDF](docs/TC5061_Operacion_FinOps_Equipo30.pdf), [Word](docs/TC5061_Operacion_FinOps_Equipo30.docx) y [Markdown](docs/TC5061_Operacion_FinOps_Equipo30.md), con toda la telemetría cruda y auditoría en `reports/semana10/`.
+
+---
+
+## 🌿 10. Flujo de Trabajo con Git y GitHub (GitHub Flow)
 
 Para asegurar la calidad, reproducibilidad y trazabilidad del código, el equipo opera bajo las siguientes políticas:
 
@@ -683,7 +764,7 @@ La implementación, documentación y entrega de la Semana 8 se gestionó mediant
 
 ---
 
-## 👥 10. Integrantes del Equipo y Roles (Equipo 30)
+## 👥 11. Integrantes del Equipo y Roles (Equipo 30)
 
 | Integrante | Matrícula | Rol en el Proyecto | Responsabilidades Principales |
 |---|---|---|---|
@@ -694,5 +775,5 @@ La implementación, documentación y entrega de la Semana 8 se gestionó mediant
 
 ---
 
-## 📄 11. Licencia
+## 📄 12. Licencia
 Este proyecto está desarrollado bajo fines académicos para el curso TC5061 (Operaciones de Inteligencia Artificial) en el Tecnológico de Monterrey. Licencia MIT.

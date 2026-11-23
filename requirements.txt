@@ -37,5 +37,7 @@ setuptools==80.10.2
 deepchecks==0.19.1
 anywidget==0.11.0
 evidently==0.7.23
+locust==2.33.2
+pypdf==5.4.0
 -r requirements-api.txt
 -e .
