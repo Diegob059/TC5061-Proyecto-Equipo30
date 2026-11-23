@@ -196,3 +196,32 @@ stop_container:
 test_api_live:
 	$(PYTHON_INTERPRETER) -m scripts.verify_container_api --base-url $(API_BASE_URL) \
 		--container-engine $(CONTAINER_ENGINE) --container-name $(CONTAINER_NAME)
+
+#################################################################################
+# ORCHESTRATION, LOAD TESTING & FINOPS (WEEK 10)                                #
+#################################################################################
+
+## Start MLflow and API stack with Docker Compose
+.PHONY: compose_up
+compose_up:
+	docker compose up -d --build
+
+## Stop Docker Compose services preserving MLflow volume
+.PHONY: compose_down
+compose_down:
+	docker compose down
+
+## Run stepped Locust load tests with live docker stats monitoring
+.PHONY: load_test
+load_test:
+	$(PYTHON_INTERPRETER) scripts/run_load_and_monitor.py --host $(API_BASE_URL)
+
+## Run FinOps cost-per-inference analysis and generate figures
+.PHONY: finops
+finops:
+	$(PYTHON_INTERPRETER) scripts/finops_analysis.py
+
+## Generate official week 10 Operations & FinOps report (DOCX, MD, PDF)
+.PHONY: report_week10
+report_week10:
+	$(PYTHON_INTERPRETER) scripts/generate_week10_report.py
