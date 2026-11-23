@@ -44,7 +44,7 @@ Para evaluar el comportamiento real bajo carga, `load_tests/locustfile.py` simul
 
 ![](reports/figures/semana10_locust_performance.png){width=94%}
 
-**Interpretación del Desempeño:** El microservicio mantuvo **0.00% de tasa de error** a lo largo de los tres niveles de concurrencia. En carga baja (10 usuarios), la API responde con latencia mediana de **7 ms** (p95 de **17 ms**) a **31.5 RPS**. Al escalar a 50 y 100 usuarios concurrentes, el throughput se estabiliza alrededor de **307.5 RPS** mientras la latencia p95 crece hasta **42 ms** (p99 **73 ms**). Esto evidencia que el límite de concurrencia de un único proceso Uvicorn (`1.0 vCPU` asignado) radica en la **saturación de CPU** (pico de **79.6%**) durante la inferencia síncrona de LightGBM y el armado de DataFrames `pandas`, y no en agotamiento de memoria.
+**Interpretación del Desempeño:** El microservicio mantuvo **0.00% de tasa de error** a lo largo de los tres niveles de concurrencia. En carga baja (10 usuarios), la API responde con latencia mediana de **7 ms** (p95 de **17 ms**) a **31.5 RPS**. Al escalar a 50 y 100 usuarios concurrentes, el throughput alcanza **307.5 RPS** mientras la latencia p95 crece hasta **42 ms** (p99 **73 ms**). Esto evidencia que el límite de concurrencia de un único proceso Uvicorn (`1.0 vCPU` asignado) radica en la **saturación de CPU** (pico de **79.6%**) durante la inferencia síncrona de LightGBM y el armado de DataFrames `pandas`, y no en agotamiento de memoria.
 
 ![](reports/figures/semana10_locust_timeseries.png){width=92%}
 
