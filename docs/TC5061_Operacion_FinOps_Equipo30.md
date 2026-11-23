@@ -30,7 +30,7 @@ Se implementó el flujo `.github/workflows/ci-cd.yml` disparado automáticamente
 
 1. **Matriz de Pruebas (`test-suite`):** Ejecuta en paralelo dos suites (`api-and-ops` y `pipelines-and-validation`) sobre Python 3.12 con caché de dependencias `pip` (`actions/setup-python@v5`), cubriendo pruebas unitarias de API, contrato Pydantic, Locust, FinOps, DeepChecks, Evidently, A/B testing y reproducibilidad, publicando reportes JUnit como artefactos.
 2. **Construcción, Compose E2E y Humo de Carga (`build-and-validate-compose`):** Valida `docker compose config`, construye la imagen OCI con Docker Buildx y caché de capas GHA (`type=gha`), levanta el servicio `mlflow`, siembra un modelo LightGBM firmado bajo `@champion` (`scripts/seed_ci_model.py`), arranca la API con `docker compose up -d`, ejecuta los 10 casos de `verify_container_api.py` y corre una prueba de humo headless de Locust capturando `docker stats` en el resumen del workflow (`$GITHUB_STEP_SUMMARY`).
-3. **Publicación Continua (`publish-image`):** Al fusionar a `main`, construye y publica automáticamente la imagen etiquetada (`latest` y `sha-<commit>`) en GitHub Container Registry (`ghcr.io`). El workflow fue verificado exitosamente en verde en GitHub Actions (Run ID 45088405161: matriz de pruebas en verde, construcción OCI con Buildx, validación E2E de Docker Compose, 10/10 pruebas de contrato API y humo de carga Locust).
+3. **Publicación Continua (`publish-image`):** Al fusionar a `main`, construye y publica automáticamente la imagen etiquetada (`latest` y `sha-<commit>`) en GitHub Container Registry (`ghcr.io`). Verificado en verde sobre main en GitHub Actions (Run ID 45089041084: pruebas en matriz, Compose E2E, Locust y publicación en GHCR).
 
 ## 3. Pruebas de Carga con Locust y Monitoreo de Recursos (`docker stats`)
 
@@ -42,15 +42,15 @@ Para evaluar el comportamiento real bajo carga, `load_tests/locustfile.py` simul
 | Carga Media (50 usuarios) | 6,873 | 156.0 | 6.8 | 5 | 17 | 38 | 0.00% | 40.1% / 50.5% | 170.9 |
 | Carga Alta / Estrés (100 usuarios) | 13,555 | 307.5 | 13.5 | 9 | 42 | 73 | 0.00% | 70.3% / 79.6% | 173.1 |
 
-![](reports/figures/semana10_locust_performance.png){width=94%}
+![](reports/figures/semana10_locust_performance.png){width=86%}
 
 **Interpretación del Desempeño:** El microservicio mantuvo **0.00% de tasa de error** a lo largo de los tres niveles de concurrencia. En carga baja (10 usuarios), la API responde con latencia mediana de **7 ms** (p95 de **17 ms**) a **31.5 RPS**. Al escalar a 50 y 100 usuarios concurrentes, el throughput alcanza **307.5 RPS** mientras la latencia p95 crece hasta **42 ms** (p99 **73 ms**). Esto evidencia que el límite de concurrencia de un único proceso Uvicorn (`1.0 vCPU` asignado) radica en la **saturación de CPU** (pico de **79.6%**) durante la inferencia síncrona de LightGBM y el armado de DataFrames `pandas`, y no en agotamiento de memoria.
 
-![](reports/figures/semana10_locust_timeseries.png){width=92%}
+![](reports/figures/semana10_locust_timeseries.png){width=84%}
 
 **Monitoreo de Contenedores (`docker stats`):** La huella de memoria RAM del contenedor `api` se mantuvo notablemente baja y estable en **173.1 MiB** (<20% del límite de `1024 MiB`), sin indicios de fugas de memoria (*memory leaks*) bajo estrés. Por su parte, el contenedor `mlflow` consumió **734.5 MiB** de RAM pero menos de 2% de CPU durante la inferencia, confirmando que una vez cargado `@champion` en memoria al arrancar la API, el tráfico de predicción queda completamente desacoplado del Model Registry.
 
-![](reports/figures/semana10_docker_stats.png){width=94%}
+![](reports/figures/semana10_docker_stats.png){width=86%}
 
 ## 4. Análisis FinOps: Costo por Inferencia y Propuestas de Optimización
 
@@ -64,7 +64,7 @@ Con la telemetría observada —capacidad sostenida de **307.5 RPS** (equivalent
 | AWS EC2 c7g.medium ARM64 (1 vCPU, 2 GB — 1-yr Savings Plan) | 1 | $16.64 | $1.02 | $0.00000102 | $5.11 |
 | GCP Cloud Run Serverless (1 vCPU, 512 MB — Scale-to-Zero por petición) | 1 | $12.68 | $0.78 | $0.00000078 | $0.78 |
 
-![](reports/figures/semana10_finops_costs.png){width=94%}
+![](reports/figures/semana10_finops_costs.png){width=86%}
 
 **Hallazgos y Optimizaciones FinOps Justificadas con Datos:**
 

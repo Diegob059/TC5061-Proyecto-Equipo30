@@ -236,15 +236,15 @@ Para evaluar el comportamiento real bajo carga, `load_tests/locustfile.py` simul
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | ---: |
 {load_table_rows}
 
-![](reports/figures/semana10_locust_performance.png){{width=94%}}
+![](reports/figures/semana10_locust_performance.png){{width=86%}}
 
 **Interpretación del Desempeño:** El microservicio mantuvo **0.00% de tasa de error** a lo largo de los tres niveles de concurrencia. En carga baja (10 usuarios), la API responde con latencia mediana de **{s_low['latency_p50_ms']:.0f} ms** (p95 de **{s_low['latency_p95_ms']:.0f} ms**) a **{s_low['rps_aggregated']:.1f} RPS**. Al escalar a 50 y 100 usuarios concurrentes, el throughput alcanza **{tel['sustained_rps_peak']:.1f} RPS** mientras la latencia p95 crece hasta **{s_high['latency_p95_ms']:.0f} ms** (p99 **{s_high['latency_p99_ms']:.0f} ms**). Esto evidencia que el límite de concurrencia de un único proceso Uvicorn (`1.0 vCPU` asignado) radica en la **saturación de CPU** (pico de **{tel['peak_api_cpu_perc']:.1f}%**) durante la inferencia síncrona de LightGBM y el armado de DataFrames `pandas`, y no en agotamiento de memoria.
 
-![](reports/figures/semana10_locust_timeseries.png){{width=92%}}
+![](reports/figures/semana10_locust_timeseries.png){{width=84%}}
 
 **Monitoreo de Contenedores (`docker stats`):** La huella de memoria RAM del contenedor `api` se mantuvo notablemente baja y estable en **{tel['peak_api_mem_mib']:.1f} MiB** (<20% del límite de `1024 MiB`), sin indicios de fugas de memoria (*memory leaks*) bajo estrés. Por su parte, el contenedor `mlflow` consumió **{tel['peak_mlflow_mem_mib']:.1f} MiB** de RAM pero menos de 2% de CPU durante la inferencia, confirmando que una vez cargado `@champion` en memoria al arrancar la API, el tráfico de predicción queda completamente desacoplado del Model Registry.
 
-![](reports/figures/semana10_docker_stats.png){{width=94%}}
+![](reports/figures/semana10_docker_stats.png){{width=86%}}
 
 ## 4. Análisis FinOps: Costo por Inferencia y Propuestas de Optimización
 
@@ -254,7 +254,7 @@ Con la telemetría observada —capacidad sostenida de **{tel['sustained_rps_pea
 | :--- | :---: | ---: | ---: | ---: | ---: |
 {finops_rows}
 
-![](reports/figures/semana10_finops_costs.png){{width=94%}}
+![](reports/figures/semana10_finops_costs.png){{width=86%}}
 
 **Hallazgos y Optimizaciones FinOps Justificadas con Datos:**
 
