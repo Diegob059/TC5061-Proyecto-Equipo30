@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import importlib
 from pathlib import Path
 
 import yaml
 
-from load_tests.locustfile import build_station_payload
+from load_tests.payloads import build_station_payload
 from scripts.finops_analysis import CLOUD_PROFILES, compute_profile_costs
 from scripts.run_load_and_monitor import parse_mem_mib, parse_percent
 
@@ -37,6 +38,13 @@ def test_github_actions_workflow_exists_and_covers_ci_cd():
     assert "test-suite" in wf["jobs"]
     assert "build-and-validate-compose" in wf["jobs"]
     assert wf["jobs"]["build-and-validate-compose"]["needs"] == "test-suite"
+
+
+def test_locustfile_is_valid_python_with_dispatcher_user():
+    locust_src = Path("load_tests/locustfile.py").read_text(encoding="utf-8")
+    tree = ast.parse(locust_src)
+    classes = {node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)}
+    assert "MiBiciDispatcherUser" in classes
 
 
 def test_locust_payload_profiles_validate_against_api_schema(monkeypatch):
