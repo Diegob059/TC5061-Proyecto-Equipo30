@@ -59,6 +59,7 @@ jobs:
             tests/test_api_verifier.py \
             tests/test_ab_testing.py \
             tests/test_operacion_finops.py \
+            tests/test_ops_regressions.py \
             -v --junitxml=junit-api-ops.xml
 
       - name: Ejecutar suite Pipelines, Validación de Datos y Reproducibilidad

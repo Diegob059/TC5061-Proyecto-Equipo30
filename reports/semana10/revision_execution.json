@@ -1,0 +1,84 @@
+{
+  "base_commit": "8b4e49ffa2b8727b4528b89a3a74e83fd5e98133",
+  "scope": "targeted_local_tests_only",
+  "command": "python -m pytest tests/test_api.py tests/test_api_verifier.py tests/test_ops_regressions.py -q --junitxml=reports/semana10/revision_pytest.xml",
+  "result": {
+    "passed": 43,
+    "failed": 0,
+    "warnings": 4
+  },
+  "python": "3.12.14",
+  "dependencies": {
+    "pytest": "9.1.1",
+    "mlflow-skinny": "3.5.0",
+    "fastapi": "0.162.0",
+    "pydantic": "2.14.1",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "matplotlib": "3.10.7"
+  },
+  "limitations": [
+    "No se ejecutó la suite completa ni el entorno fijado completo del proyecto.",
+    "MLflow skinny se utilizó para la regresión local del registry.",
+    "No se repitió Docker Compose, Locust ni la carga histórica.",
+    "Las pruebas de esta rama en GitHub Actions siguen pendientes."
+  ],
+  "historical_evidence": {
+    "reports/semana10/load_test_summary.json": {
+      "unchanged": true,
+      "sha256": "1d09377b94ddb2a94f8da7ae8d7961a2884b3e2d3b1e8e7f782e5065718dd260"
+    },
+    "reports/semana10/docker_stats.csv": {
+      "unchanged": true,
+      "sha256": "d4a00a6a5681c6e9fb7eb596f883aa70647f2859ccedb7e439bb6e06448f6777"
+    },
+    "reports/semana10/locust_high_100u_exceptions.csv": {
+      "unchanged": true,
+      "sha256": "3e73e8f665731ee4e45a6a91202a31b06999f2c53240f14aee2532e0e0b42b09"
+    },
+    "reports/semana10/locust_high_100u_failures.csv": {
+      "unchanged": true,
+      "sha256": "ecadae309edce3f98facc62c31013d2720c05029732a1bb3d8f288639ffc3736"
+    },
+    "reports/semana10/locust_high_100u_stats.csv": {
+      "unchanged": true,
+      "sha256": "23c643f4c92e4c76da8ebfb7df28b38a9612fb15e769eb195f0ab03cbceb5b7c"
+    },
+    "reports/semana10/locust_high_100u_stats_history.csv": {
+      "unchanged": true,
+      "sha256": "fdd32e34abac99ea3b4c0d7815321637b6aade88471a7f1ed954c4f738d7883e"
+    },
+    "reports/semana10/locust_low_10u_exceptions.csv": {
+      "unchanged": true,
+      "sha256": "3e73e8f665731ee4e45a6a91202a31b06999f2c53240f14aee2532e0e0b42b09"
+    },
+    "reports/semana10/locust_low_10u_failures.csv": {
+      "unchanged": true,
+      "sha256": "ecadae309edce3f98facc62c31013d2720c05029732a1bb3d8f288639ffc3736"
+    },
+    "reports/semana10/locust_low_10u_stats.csv": {
+      "unchanged": true,
+      "sha256": "86d74c22124e8e9fd13fdd1fdb20d33204d170700aa32015511f18221941217c"
+    },
+    "reports/semana10/locust_low_10u_stats_history.csv": {
+      "unchanged": true,
+      "sha256": "ed7f7b30af2d8db920754713e4d3e7cb9de0fc794a4194a7b7cd5278073e1211"
+    },
+    "reports/semana10/locust_medium_50u_exceptions.csv": {
+      "unchanged": true,
+      "sha256": "3e73e8f665731ee4e45a6a91202a31b06999f2c53240f14aee2532e0e0b42b09"
+    },
+    "reports/semana10/locust_medium_50u_failures.csv": {
+      "unchanged": true,
+      "sha256": "ecadae309edce3f98facc62c31013d2720c05029732a1bb3d8f288639ffc3736"
+    },
+    "reports/semana10/locust_medium_50u_stats.csv": {
+      "unchanged": true,
+      "sha256": "6bce882f08afdc8ada816ebacaa04b46f4a790e33762879e04b47300247ed814"
+    },
+    "reports/semana10/locust_medium_50u_stats_history.csv": {
+      "unchanged": true,
+      "sha256": "54fd066d63a6dd7278d9f727bdff8ba3a4d3ab243503169a5419b0a97c4ec1e1"
+    }
+  }
+}

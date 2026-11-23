@@ -1,11 +1,37 @@
 {
   "observed_telemetry": {
-    "sustained_rps_peak": 307.51,
+    "sustained_rps_peak": 256.44,
     "avg_latency_ms_nominal": 6.82,
     "peak_api_cpu_perc": 79.6,
     "peak_api_mem_mib": 173.1,
     "peak_mlflow_mem_mib": 734.5,
-    "theoretical_max_inferences_month_1replica": 808136280
+    "extrapolated_inferences_month_730h": 673924320,
+    "rps_total_peak": 307.51,
+    "capacity_scope": "observed_mixed_workload_not_maximum_capacity",
+    "historical_model_provenance": "not_recorded"
+  },
+  "assumptions": {
+    "pricing_reference_date": "2026-11-22",
+    "sources": [
+      "https://aws.amazon.com/fargate/pricing/",
+      "https://cloud.google.com/run/pricing"
+    ],
+    "hours_per_month": 730.0,
+    "operating_hours_per_month": 577.6,
+    "mlflow_monthly_usd": 36.0401,
+    "mlflow_budget_basis": "Una tarea x86 1 vCPU 2 GiB, 730 h; presupuesto de referencia",
+    "cloudrun_scope": "Peticiones aisladas con redondeo a 100 ms; sin nivel gratuito, solapamiento ni cold starts",
+    "excluded_costs": [
+      "storage",
+      "logs",
+      "network",
+      "load_balancer",
+      "IPv4",
+      "taxes",
+      "training"
+    ],
+    "profile_capacity": "Una réplica supuesta; validar cada topología con carga antes de desplegar",
+    "ec2_savings_price": "Omitido: falta cotización verificable por plazo y modalidad de pago"
   },
   "workloads": {
     "standard_5min": {
@@ -20,14 +46,17 @@
           "vcpu": 1.0,
           "mem_gb": 2.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 1.5666666666666667,
           "monthly_inferences": 3257664,
           "compute_monthly_usd": 36.0401,
-          "total_monthly_usd": 36.0401,
-          "cost_per_1m_usd": 11.0632,
-          "cost_per_inference_usd": 1.1063172874796174e-05,
-          "theoretical_floor_per_1m_usd": 0.0446,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Línea base sobredimensionada 24/7 (equivalente a límites actuales de Compose)."
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 72.0802,
+          "api_cost_per_1m_usd": 11.063172874796175,
+          "cost_per_1m_usd": 22.1263,
+          "cost_per_inference_usd": 2.212634574959235e-05,
+          "cloudrun_billed_seconds_per_request": null,
+          "notes": "Referencia Fargate x86 de 1 vCPU y 2 GiB; Compose local limita cada servicio a 1 GiB."
         },
         {
           "key": "fargate_arm_rightsized",
@@ -37,13 +66,16 @@
           "vcpu": 0.5,
           "mem_gb": 1.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 1.5666666666666667,
           "monthly_inferences": 3257664,
           "compute_monthly_usd": 14.4175,
-          "total_monthly_usd": 14.4175,
-          "cost_per_1m_usd": 4.4257,
-          "cost_per_inference_usd": 4.425717323824679e-06,
-          "theoretical_floor_per_1m_usd": 0.0178,
-          "max_capacity_inferences_month": 808136280,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 50.4576,
+          "api_cost_per_1m_usd": 4.425717323824679,
+          "cost_per_1m_usd": 15.4889,
+          "cost_per_inference_usd": 1.5488890198620853e-05,
+          "cloudrun_billed_seconds_per_request": null,
           "notes": "Ajuste de memoria/CPU guiado por docker stats + 20% ahorro arquitectura ARM64."
         },
         {
@@ -54,31 +86,17 @@
           "vcpu": 0.5,
           "mem_gb": 1.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 1.5666666666666667,
           "monthly_inferences": 3257664,
           "compute_monthly_usd": 11.4076,
-          "total_monthly_usd": 11.4076,
-          "cost_per_1m_usd": 3.5018,
-          "cost_per_inference_usd": 3.50177304964539e-06,
-          "theoretical_floor_per_1m_usd": 0.0178,
-          "max_capacity_inferences_month": 808136280,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 47.4477,
+          "api_cost_per_1m_usd": 3.50177304964539,
+          "cost_per_1m_usd": 14.5649,
+          "cost_per_inference_usd": 1.4564945924441565e-05,
+          "cloudrun_billed_seconds_per_request": null,
           "notes": "Apagado programado 00:00-05:00 alineado al horario operativo de MiBici (-20.8% horas)."
-        },
-        {
-          "key": "ec2_c7g_savings",
-          "name": "AWS EC2 c7g.medium ARM64 (1 vCPU, 2 GB — 1-yr Savings Plan)",
-          "short_label": "EC2 c7g.med\n1vCPU/2GB\n(Savings 1yr)",
-          "provider": "AWS",
-          "vcpu": 1.0,
-          "mem_gb": 2.0,
-          "replicas": 1,
-          "monthly_inferences": 3257664,
-          "compute_monthly_usd": 16.644,
-          "total_monthly_usd": 16.644,
-          "cost_per_1m_usd": 5.1092,
-          "cost_per_inference_usd": 5.1091825307950735e-06,
-          "theoretical_floor_per_1m_usd": 0.0206,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Instancia dedicada reservada ideal para tráfico continuo y multi-worker uvicorn."
         },
         {
           "key": "cloudrun_serverless",
@@ -88,14 +106,17 @@
           "vcpu": 1.0,
           "mem_gb": 0.5,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 1.5666666666666667,
           "monthly_inferences": 3257664,
-          "compute_monthly_usd": 2.5369,
-          "total_monthly_usd": 2.5369,
-          "cost_per_1m_usd": 0.7788,
-          "cost_per_inference_usd": 7.787500000000001e-07,
-          "theoretical_floor_per_1m_usd": 0.7788,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Pago estricto por milisegundo de inferencia + tarifa por millón de peticiones (cero costo ocioso)."
+          "compute_monthly_usd": 9.5287,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 45.5688,
+          "api_cost_per_1m_usd": 2.9250000000000003,
+          "cost_per_1m_usd": 13.9882,
+          "cost_per_inference_usd": 1.3988172874796174e-05,
+          "cloudrun_billed_seconds_per_request": 0.1,
+          "notes": "Escenario serial sin solapamiento, redondeo a 100 ms, sin nivel gratuito ni arranques en frío."
         }
       ]
     },
@@ -111,14 +132,17 @@
           "vcpu": 1.0,
           "mem_gb": 2.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 7.833333333333333,
           "monthly_inferences": 16288320,
           "compute_monthly_usd": 36.0401,
-          "total_monthly_usd": 36.0401,
-          "cost_per_1m_usd": 2.2126,
-          "cost_per_inference_usd": 2.212634574959235e-06,
-          "theoretical_floor_per_1m_usd": 0.0446,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Línea base sobredimensionada 24/7 (equivalente a límites actuales de Compose)."
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 72.0802,
+          "api_cost_per_1m_usd": 2.212634574959235,
+          "cost_per_1m_usd": 4.4253,
+          "cost_per_inference_usd": 4.42526914991847e-06,
+          "cloudrun_billed_seconds_per_request": null,
+          "notes": "Referencia Fargate x86 de 1 vCPU y 2 GiB; Compose local limita cada servicio a 1 GiB."
         },
         {
           "key": "fargate_arm_rightsized",
@@ -128,13 +152,16 @@
           "vcpu": 0.5,
           "mem_gb": 1.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 7.833333333333333,
           "monthly_inferences": 16288320,
           "compute_monthly_usd": 14.4175,
-          "total_monthly_usd": 14.4175,
-          "cost_per_1m_usd": 0.8851,
-          "cost_per_inference_usd": 8.851434647649359e-07,
-          "theoretical_floor_per_1m_usd": 0.0178,
-          "max_capacity_inferences_month": 808136280,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 50.4576,
+          "api_cost_per_1m_usd": 0.8851434647649359,
+          "cost_per_1m_usd": 3.0978,
+          "cost_per_inference_usd": 3.0977780397241703e-06,
+          "cloudrun_billed_seconds_per_request": null,
           "notes": "Ajuste de memoria/CPU guiado por docker stats + 20% ahorro arquitectura ARM64."
         },
         {
@@ -145,31 +172,17 @@
           "vcpu": 0.5,
           "mem_gb": 1.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 7.833333333333333,
           "monthly_inferences": 16288320,
           "compute_monthly_usd": 11.4076,
-          "total_monthly_usd": 11.4076,
-          "cost_per_1m_usd": 0.7004,
-          "cost_per_inference_usd": 7.00354609929078e-07,
-          "theoretical_floor_per_1m_usd": 0.0178,
-          "max_capacity_inferences_month": 808136280,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 47.4477,
+          "api_cost_per_1m_usd": 0.700354609929078,
+          "cost_per_1m_usd": 2.913,
+          "cost_per_inference_usd": 2.9129891848883127e-06,
+          "cloudrun_billed_seconds_per_request": null,
           "notes": "Apagado programado 00:00-05:00 alineado al horario operativo de MiBici (-20.8% horas)."
-        },
-        {
-          "key": "ec2_c7g_savings",
-          "name": "AWS EC2 c7g.medium ARM64 (1 vCPU, 2 GB — 1-yr Savings Plan)",
-          "short_label": "EC2 c7g.med\n1vCPU/2GB\n(Savings 1yr)",
-          "provider": "AWS",
-          "vcpu": 1.0,
-          "mem_gb": 2.0,
-          "replicas": 1,
-          "monthly_inferences": 16288320,
-          "compute_monthly_usd": 16.644,
-          "total_monthly_usd": 16.644,
-          "cost_per_1m_usd": 1.0218,
-          "cost_per_inference_usd": 1.0218365061590147e-06,
-          "theoretical_floor_per_1m_usd": 0.0206,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Instancia dedicada reservada ideal para tráfico continuo y multi-worker uvicorn."
         },
         {
           "key": "cloudrun_serverless",
@@ -179,14 +192,17 @@
           "vcpu": 1.0,
           "mem_gb": 0.5,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 7.833333333333333,
           "monthly_inferences": 16288320,
-          "compute_monthly_usd": 12.6845,
-          "total_monthly_usd": 12.6845,
-          "cost_per_1m_usd": 0.7787,
-          "cost_per_inference_usd": 7.7875e-07,
-          "theoretical_floor_per_1m_usd": 0.7787,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Pago estricto por milisegundo de inferencia + tarifa por millón de peticiones (cero costo ocioso)."
+          "compute_monthly_usd": 47.6433,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 83.6834,
+          "api_cost_per_1m_usd": 2.9250000000000003,
+          "cost_per_1m_usd": 5.1376,
+          "cost_per_inference_usd": 5.137634574959234e-06,
+          "cloudrun_billed_seconds_per_request": 0.1,
+          "notes": "Escenario serial sin solapamiento, redondeo a 100 ms, sin nivel gratuito ni arranques en frío."
         }
       ]
     },
@@ -202,14 +218,17 @@
           "vcpu": 1.0,
           "mem_gb": 2.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 24.04586026469683,
           "monthly_inferences": 50000000,
           "compute_monthly_usd": 36.0401,
-          "total_monthly_usd": 36.0401,
-          "cost_per_1m_usd": 0.7208,
-          "cost_per_inference_usd": 7.20802e-07,
-          "theoretical_floor_per_1m_usd": 0.0446,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Línea base sobredimensionada 24/7 (equivalente a límites actuales de Compose)."
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 72.0802,
+          "api_cost_per_1m_usd": 0.7208019999999999,
+          "cost_per_1m_usd": 1.4416,
+          "cost_per_inference_usd": 1.441604e-06,
+          "cloudrun_billed_seconds_per_request": null,
+          "notes": "Referencia Fargate x86 de 1 vCPU y 2 GiB; Compose local limita cada servicio a 1 GiB."
         },
         {
           "key": "fargate_arm_rightsized",
@@ -219,13 +238,16 @@
           "vcpu": 0.5,
           "mem_gb": 1.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 24.04586026469683,
           "monthly_inferences": 50000000,
           "compute_monthly_usd": 14.4175,
-          "total_monthly_usd": 14.4175,
-          "cost_per_1m_usd": 0.2883,
-          "cost_per_inference_usd": 2.8835e-07,
-          "theoretical_floor_per_1m_usd": 0.0178,
-          "max_capacity_inferences_month": 808136280,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 50.4576,
+          "api_cost_per_1m_usd": 0.28835,
+          "cost_per_1m_usd": 1.0092,
+          "cost_per_inference_usd": 1.009152e-06,
+          "cloudrun_billed_seconds_per_request": null,
           "notes": "Ajuste de memoria/CPU guiado por docker stats + 20% ahorro arquitectura ARM64."
         },
         {
@@ -236,31 +258,17 @@
           "vcpu": 0.5,
           "mem_gb": 1.0,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 24.04586026469683,
           "monthly_inferences": 50000000,
           "compute_monthly_usd": 11.4076,
-          "total_monthly_usd": 11.4076,
-          "cost_per_1m_usd": 0.2282,
-          "cost_per_inference_usd": 2.2815200000000002e-07,
-          "theoretical_floor_per_1m_usd": 0.0178,
-          "max_capacity_inferences_month": 808136280,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 47.4477,
+          "api_cost_per_1m_usd": 0.22815200000000002,
+          "cost_per_1m_usd": 0.949,
+          "cost_per_inference_usd": 9.48954e-07,
+          "cloudrun_billed_seconds_per_request": null,
           "notes": "Apagado programado 00:00-05:00 alineado al horario operativo de MiBici (-20.8% horas)."
-        },
-        {
-          "key": "ec2_c7g_savings",
-          "name": "AWS EC2 c7g.medium ARM64 (1 vCPU, 2 GB — 1-yr Savings Plan)",
-          "short_label": "EC2 c7g.med\n1vCPU/2GB\n(Savings 1yr)",
-          "provider": "AWS",
-          "vcpu": 1.0,
-          "mem_gb": 2.0,
-          "replicas": 1,
-          "monthly_inferences": 50000000,
-          "compute_monthly_usd": 16.644,
-          "total_monthly_usd": 16.644,
-          "cost_per_1m_usd": 0.3329,
-          "cost_per_inference_usd": 3.3288000000000005e-07,
-          "theoretical_floor_per_1m_usd": 0.0206,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Instancia dedicada reservada ideal para tráfico continuo y multi-worker uvicorn."
         },
         {
           "key": "cloudrun_serverless",
@@ -270,26 +278,29 @@
           "vcpu": 1.0,
           "mem_gb": 0.5,
           "replicas": 1,
+          "capacity_status": "requires_benchmark_per_topology",
+          "required_operating_rps": 24.04586026469683,
           "monthly_inferences": 50000000,
-          "compute_monthly_usd": 38.9375,
-          "total_monthly_usd": 38.9375,
-          "cost_per_1m_usd": 0.7787,
-          "cost_per_inference_usd": 7.7875e-07,
-          "theoretical_floor_per_1m_usd": 0.7787,
-          "max_capacity_inferences_month": 808136280,
-          "notes": "Pago estricto por milisegundo de inferencia + tarifa por millón de peticiones (cero costo ocioso)."
+          "compute_monthly_usd": 146.25,
+          "mlflow_monthly_usd": 36.0401,
+          "total_monthly_usd": 182.2901,
+          "api_cost_per_1m_usd": 2.9250000000000003,
+          "cost_per_1m_usd": 3.6458,
+          "cost_per_inference_usd": 3.6458020000000004e-06,
+          "cloudrun_billed_seconds_per_request": 0.1,
+          "notes": "Escenario serial sin solapamiento, redondeo a 100 ms, sin nivel gratuito ni arranques en frío."
         }
       ]
     }
   },
   "key_findings": {
-    "baseline_monthly_usd": 36.0401,
-    "baseline_cost_per_1m_usd": 2.2126,
-    "optimized_scheduled_arm_monthly_usd": 11.4076,
-    "optimized_scheduled_arm_savings_pct": 68.3,
-    "serverless_std_monthly_usd": 2.5369,
-    "serverless_std_savings_pct": 93.0,
-    "serverless_rt_monthly_usd": 12.6845
+    "baseline_monthly_usd": 72.0802,
+    "baseline_cost_per_1m_usd": 4.4253,
+    "optimized_scheduled_arm_monthly_usd": 47.4477,
+    "optimized_scheduled_arm_savings_pct": 34.2,
+    "serverless_std_monthly_usd": 45.5688,
+    "serverless_std_savings_pct": 36.8,
+    "serverless_rt_monthly_usd": 83.6834
   },
   "cloud_profiles_catalog": [
     {
@@ -301,7 +312,7 @@
       "mem_gb": 2.0,
       "hourly_usd": 0.049370000000000004,
       "billing_mode": "always_on",
-      "notes": "Línea base sobredimensionada 24/7 (equivalente a límites actuales de Compose)."
+      "notes": "Referencia Fargate x86 de 1 vCPU y 2 GiB; Compose local limita cada servicio a 1 GiB."
     },
     {
       "key": "fargate_arm_rightsized",
@@ -326,17 +337,6 @@
       "notes": "Apagado programado 00:00-05:00 alineado al horario operativo de MiBici (-20.8% horas)."
     },
     {
-      "key": "ec2_c7g_savings",
-      "name": "AWS EC2 c7g.medium ARM64 (1 vCPU, 2 GB — 1-yr Savings Plan)",
-      "short_label": "EC2 c7g.med\n1vCPU/2GB\n(Savings 1yr)",
-      "provider": "AWS",
-      "vcpu": 1.0,
-      "mem_gb": 2.0,
-      "hourly_usd": 0.0228,
-      "billing_mode": "always_on",
-      "notes": "Instancia dedicada reservada ideal para tráfico continuo y multi-worker uvicorn."
-    },
-    {
       "key": "cloudrun_serverless",
       "name": "GCP Cloud Run Serverless (1 vCPU, 512 MB — Scale-to-Zero por petición)",
       "short_label": "Cloud Run\n1vCPU/512MB\n(Serverless)",
@@ -345,7 +345,7 @@
       "mem_gb": 0.5,
       "hourly_usd": 0.0,
       "billing_mode": "serverless_per_req",
-      "notes": "Pago estricto por milisegundo de inferencia + tarifa por millón de peticiones (cero costo ocioso)."
+      "notes": "Escenario serial sin solapamiento, redondeo a 100 ms, sin nivel gratuito ni arranques en frío."
     }
   ]
 }
