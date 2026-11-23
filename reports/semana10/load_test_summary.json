@@ -1,0 +1,101 @@
+{
+  "generated_at_utc": "2026-11-22T23:50:35.768230+00:00",
+  "host": "http://127.0.0.1:8002",
+  "container_engine": "docker",
+  "containers": [
+    "tc5061-proyecto-equipo30-api-1",
+    "tc5061-proyecto-equipo30-mlflow-1"
+  ],
+  "scenarios": [
+    {
+      "name": "low_10u",
+      "label": "Carga Baja (10 usuarios)",
+      "users": 10,
+      "spawn_rate": 5,
+      "duration": "30s",
+      "total_requests": 914,
+      "failure_count": 0,
+      "error_rate_pct": 0.0,
+      "rps_aggregated": 31.48,
+      "rps_predict": 26.35,
+      "predict_requests": 765,
+      "latency_avg_ms": 8.11,
+      "latency_p50_ms": 7.0,
+      "latency_p95_ms": 17.0,
+      "latency_p99_ms": 24.0,
+      "latency_max_ms": 29.63,
+      "api_resources": {
+        "cpu_avg_perc": 15.85,
+        "cpu_max_perc": 23.98,
+        "mem_avg_mib": 171.6,
+        "mem_max_mib": 171.6
+      },
+      "mlflow_resources": {
+        "cpu_avg_perc": 1.99,
+        "cpu_max_perc": 13.31,
+        "mem_avg_mib": 734.5,
+        "mem_max_mib": 734.5
+      }
+    },
+    {
+      "name": "medium_50u",
+      "label": "Carga Media (50 usuarios)",
+      "users": 50,
+      "spawn_rate": 10,
+      "duration": "45s",
+      "total_requests": 6873,
+      "failure_count": 0,
+      "error_rate_pct": 0.0,
+      "rps_aggregated": 155.99,
+      "rps_predict": 131.28,
+      "predict_requests": 5784,
+      "latency_avg_ms": 6.82,
+      "latency_p50_ms": 5.0,
+      "latency_p95_ms": 17.0,
+      "latency_p99_ms": 38.0,
+      "latency_max_ms": 91.74,
+      "api_resources": {
+        "cpu_avg_perc": 40.13,
+        "cpu_max_perc": 50.48,
+        "mem_avg_mib": 170.48,
+        "mem_max_mib": 170.9
+      },
+      "mlflow_resources": {
+        "cpu_avg_perc": 2.1,
+        "cpu_max_perc": 13.41,
+        "mem_avg_mib": 734.5,
+        "mem_max_mib": 734.5
+      }
+    },
+    {
+      "name": "high_100u",
+      "label": "Carga Alta / Estrés (100 usuarios)",
+      "users": 100,
+      "spawn_rate": 20,
+      "duration": "45s",
+      "total_requests": 13555,
+      "failure_count": 0,
+      "error_rate_pct": 0.0,
+      "rps_aggregated": 307.51,
+      "rps_predict": 256.44,
+      "predict_requests": 11304,
+      "latency_avg_ms": 13.51,
+      "latency_p50_ms": 9.0,
+      "latency_p95_ms": 42.0,
+      "latency_p99_ms": 73.0,
+      "latency_max_ms": 135.55,
+      "api_resources": {
+        "cpu_avg_perc": 70.28,
+        "cpu_max_perc": 79.6,
+        "mem_avg_mib": 172.75,
+        "mem_max_mib": 173.1
+      },
+      "mlflow_resources": {
+        "cpu_avg_perc": 1.22,
+        "cpu_max_perc": 13.25,
+        "mem_avg_mib": 734.5,
+        "mem_max_mib": 734.5
+      }
+    }
+  ]
+}
