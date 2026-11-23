@@ -5,15 +5,17 @@ Consume los resultados reales generados por `scripts/run_load_and_monitor.py`
 `docker_stats.csv`) para:
 1. Estimar el costo por inferencia (USD / inferencia y USD / 1M inferencias) bajo
    múltiples topologías de nube (AWS ECS Fargate x86_64, Fargate ARM64 Graviton
-   right-sized, AWS EC2 c7g.medium Savings Plan y GCP Cloud Run scale-to-zero).
-2. Contrastar la capacidad máxima teórica (saturación) vs. la demanda real del
-   sistema MiBici Guadalajara (470 estaciones, 19 h/día de operación).
+   right-sized y GCP Cloud Run con facturación por uso).
+2. Contrastar throughput observado y demanda supuesta para 470 estaciones
+   con una ventana operativa de 19 horas al día.
 3. Generar las 4 figuras de calidad editorial en `reports/figures/semana10_*.png`.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -25,9 +27,9 @@ import pandas as pd
 SEMANA10_DIR = Path("reports/semana10")
 FIGURES_DIR = Path("reports/figures")
 
-# Parámetros operativos reales del sistema MiBici Guadalajara (AMG)
+# Supuestos de demanda del escenario MiBici Guadalajara (AMG)
 HOURS_PER_MONTH = 730.0
-ACTIVE_HOURS_PER_DAY = 19.0  # MiBici opera de 05:00 a 00:00 (19h activas, 5h inactivas)
+ACTIVE_HOURS_PER_DAY = 19.0  # Ventana supuesta 05:00 a 00:00; no acredita un horario oficial
 ACTIVE_DAYS_PER_MONTH = 30.4
 ACTIVE_HOURS_PER_MONTH = ACTIVE_HOURS_PER_DAY * ACTIVE_DAYS_PER_MONTH  # ~577.6 h/mes
 MIBICI_STATIONS = 470
@@ -56,10 +58,9 @@ class CloudProfile:
     notes: str
 
 
-# Tarifas públicas vigentes de referencia (AWS us-east-1 / GCP us-central1)
+# Tarifas de referencia consultadas el 22 de noviembre de 2026 (AWS us-east-1 / GCP us-central1)
 # - AWS ECS Fargate x86_64: $0.04048/vCPU-h + $0.004445/GB-h
 # - AWS ECS Fargate ARM64 (Graviton): $0.03238/vCPU-h + $0.00356/GB-h
-# - AWS EC2 c7g.medium (ARM64, 1 vCPU, 2 GB): $0.0361/h On-Demand, $0.0228/h Compute Savings Plan 1-yr
 # - GCP Cloud Run (Tier 1, request-based): $0.00002400/vCPU-s + $0.00000250/GB-s + $0.40/1M requests
 CLOUD_PROFILES = [
     CloudProfile(
@@ -71,7 +72,7 @@ CLOUD_PROFILES = [
         mem_gb=2.0,
         hourly_usd=1.0 * 0.04048 + 2.0 * 0.004445,  # $0.04937/h
         billing_mode="always_on",
-        notes="Línea base sobredimensionada 24/7 (equivalente a límites actuales de Compose).",
+        notes="Referencia Fargate x86 de 1 vCPU y 2 GiB; Compose local limita cada servicio a 1 GiB.",
     ),
     CloudProfile(
         key="fargate_arm_rightsized",
@@ -96,17 +97,6 @@ CLOUD_PROFILES = [
         notes="Apagado programado 00:00-05:00 alineado al horario operativo de MiBici (-20.8% horas).",
     ),
     CloudProfile(
-        key="ec2_c7g_savings",
-        name="AWS EC2 c7g.medium ARM64 (1 vCPU, 2 GB — 1-yr Savings Plan)",
-        short_label="EC2 c7g.med\n1vCPU/2GB\n(Savings 1yr)",
-        provider="AWS",
-        vcpu=1.0,
-        mem_gb=2.0,
-        hourly_usd=0.0228,
-        billing_mode="always_on",
-        notes="Instancia dedicada reservada ideal para tráfico continuo y multi-worker uvicorn.",
-    ),
-    CloudProfile(
         key="cloudrun_serverless",
         name="GCP Cloud Run Serverless (1 vCPU, 512 MB — Scale-to-Zero por petición)",
         short_label="Cloud Run\n1vCPU/512MB\n(Serverless)",
@@ -115,7 +105,7 @@ CLOUD_PROFILES = [
         mem_gb=0.5,
         hourly_usd=0.0,
         billing_mode="serverless_per_req",
-        notes="Pago estricto por milisegundo de inferencia + tarifa por millón de peticiones (cero costo ocioso).",
+        notes="Escenario serial sin solapamiento, redondeo a 100 ms, sin nivel gratuito ni arranques en frío.",
     ),
 ]
 
@@ -127,58 +117,45 @@ def compute_profile_costs(
     sustained_rps: float,
     mlflow_overhead_usd: float = 0.0,
 ) -> dict[str, Any]:
-    """Calcula costo mensual, costo por 1M inferencias y costo unitario por inferencia."""
+    """Proyecta una réplica por topología; su capacidad requiere benchmark propio.
+
+    Cloud Run usa un escenario explícito sin solapamiento entre solicitudes.
+    El redondeo por petición es aplicable a ese supuesto, no a tráfico con
+    concurrencia compartida. No incluye nivel gratuito ni cold starts.
+    """
+    if monthly_inferences <= 0 or not all(math.isfinite(float(x)) for x in
+            (avg_latency_ms, sustained_rps, mlflow_overhead_usd)):
+        raise ValueError("Se requieren inferencias positivas y valores finitos")
+    if avg_latency_ms <= 0 or sustained_rps <= 0 or mlflow_overhead_usd < 0:
+        raise ValueError("Latencia y RPS deben ser positivos; costo adicional no negativo")
+    replicas = 1  # Supuesto presupuestario; no certifica capacidad de otras CPU/arquitecturas.
+    billed_seconds = None
     if profile.billing_mode == "always_on":
-        # Número mínimo de réplicas para absorber el throughput requerido (margen 70% utilización)
-        required_rps = monthly_inferences / (ACTIVE_HOURS_PER_MONTH * 3600.0)
-        replicas = max(1, int(np.ceil(required_rps / max(sustained_rps * 0.70, 1.0))))
-        compute_monthly = profile.hourly_usd * HOURS_PER_MONTH * replicas
+        compute_monthly = profile.hourly_usd * HOURS_PER_MONTH
     elif profile.billing_mode == "scheduled_19h":
-        required_rps = monthly_inferences / (ACTIVE_HOURS_PER_MONTH * 3600.0)
-        replicas = max(1, int(np.ceil(required_rps / max(sustained_rps * 0.70, 1.0))))
-        compute_monthly = profile.hourly_usd * ACTIVE_HOURS_PER_MONTH * replicas
+        compute_monthly = profile.hourly_usd * ACTIVE_HOURS_PER_MONTH
     elif profile.billing_mode == "serverless_per_req":
-        replicas = 1
-        # Facturación en bloques mínimos de 100 ms con concurrencia promedio de 8 reqs por instancia
-        # Tiempo de CPU efectivo por inferencia = latencia media / concurrencia (conservador: 1x latencia)
-        exec_seconds_per_req = max(avg_latency_ms / 1000.0, 0.015)
-        vcpu_sec = monthly_inferences * exec_seconds_per_req * profile.vcpu
-        gb_sec = monthly_inferences * exec_seconds_per_req * profile.mem_gb
-        compute_monthly = (
-            vcpu_sec * 0.00002400
-            + gb_sec * 0.00000250
-            + (monthly_inferences / 1_000_000.0) * 0.40
+        billed_seconds = math.ceil(avg_latency_ms / 100.0) * 0.1
+        compute_monthly = monthly_inferences * (
+            billed_seconds * (profile.vcpu * 0.00002400 + profile.mem_gb * 0.00000250)
+            + 0.40 / 1_000_000.0
         )
     else:
         raise ValueError(f"Modo de facturación desconocido: {profile.billing_mode}")
-
-    total_monthly = compute_monthly + mlflow_overhead_usd
-    cost_per_million = (total_monthly / monthly_inferences) * 1_000_000.0
-    cost_per_inference = total_monthly / monthly_inferences
-
-    # Piso teórico al 100% de saturación sostenida de 1 réplica
-    max_inferences_month = int(sustained_rps * 3600.0 * HOURS_PER_MONTH)
-    if profile.billing_mode == "serverless_per_req":
-        floor_per_million = cost_per_million
-    else:
-        base_1_replica = profile.hourly_usd * HOURS_PER_MONTH
-        floor_per_million = (base_1_replica / max(max_inferences_month, 1)) * 1_000_000.0
-
+    total = compute_monthly + mlflow_overhead_usd
     return {
-        "key": profile.key,
-        "name": profile.name,
-        "short_label": profile.short_label,
-        "provider": profile.provider,
-        "vcpu": profile.vcpu,
-        "mem_gb": profile.mem_gb,
-        "replicas": replicas,
+        "key": profile.key, "name": profile.name, "short_label": profile.short_label,
+        "provider": profile.provider, "vcpu": profile.vcpu, "mem_gb": profile.mem_gb,
+        "replicas": replicas, "capacity_status": "requires_benchmark_per_topology",
+        "required_operating_rps": monthly_inferences / (ACTIVE_HOURS_PER_MONTH * 3600),
         "monthly_inferences": monthly_inferences,
         "compute_monthly_usd": round(compute_monthly, 4),
-        "total_monthly_usd": round(total_monthly, 4),
-        "cost_per_1m_usd": round(cost_per_million, 4),
-        "cost_per_inference_usd": cost_per_inference,
-        "theoretical_floor_per_1m_usd": round(floor_per_million, 4),
-        "max_capacity_inferences_month": max_inferences_month,
+        "mlflow_monthly_usd": round(mlflow_overhead_usd, 4),
+        "total_monthly_usd": round(total, 4),
+        "api_cost_per_1m_usd": compute_monthly / monthly_inferences * 1_000_000,
+        "cost_per_1m_usd": round(total / monthly_inferences * 1_000_000, 4),
+        "cost_per_inference_usd": total / monthly_inferences,
+        "cloudrun_billed_seconds_per_request": billed_seconds,
         "notes": profile.notes,
     }
 
@@ -214,8 +191,8 @@ def generate_figures(summary: dict[str, Any], finops: dict[str, Any]) -> list[st
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.4), dpi=220)
     x = np.arange(len(users))
     w = 0.34
-    b1 = ax1.bar(x - w / 2, rps_agg, width=w, color="#003366", label="RPS Total (API)")
-    b2 = ax1.bar(x + w / 2, rps_pred, width=w, color="#0284C7", label="RPS POST /predict")
+    b1 = ax1.bar(x - w / 2, rps_agg, width=w, color="#003366", label="RPS total API")
+    b2 = ax1.bar(x + w / 2, rps_pred, width=w, color="#0284C7", label="Inferencias POST /predict")
     for bars in (b1, b2):
         for bar in bars:
             h = bar.get_height()
@@ -223,7 +200,7 @@ def generate_figures(summary: dict[str, Any], finops: dict[str, Any]) -> list[st
     ax1.set_xticks(x)
     ax1.set_xticklabels([f"{u} usuarios" for u in users], fontsize=9.5)
     ax1.set_ylabel("Peticiones por segundo (RPS)", fontsize=10, fontweight="bold", color="#0F172A")
-    ax1.set_title("A) Throughput Sostenido por Concurrencia", fontsize=10.5, fontweight="bold", color="#003366", pad=10)
+    ax1.set_title("A) Throughput observado por concurrencia", fontsize=10.5, fontweight="bold", color="#003366", pad=10)
     ax1.set_ylim(0, max(rps_agg) * 1.22)
     ax1.grid(axis="y")
     ax1.legend(frameon=True, fontsize=8.5, loc="upper left")
@@ -270,7 +247,7 @@ def generate_figures(summary: dict[str, Any], finops: dict[str, Any]) -> list[st
             ax1.plot(df_h["t_s"], df_h["Requests/s"], color="#003366", linewidth=2.2, label="RPS total")
             ax1.fill_between(df_h["t_s"], df_h["Requests/s"], color="#BAE6FD", alpha=0.45)
             ax1.set_ylabel("Peticiones / seg", fontsize=9.5, fontweight="bold", color="#003366")
-            ax1.set_title("Evolución Temporal en Escenario de Estrés (100 usuarios, spawn 20/s, 45s)", fontsize=11, fontweight="bold", color="#003366", pad=8)
+            ax1.set_title("Evolución Temporal en Carga alta observada (100 usuarios, 20 usuarios/s, 45 s)", fontsize=11, fontweight="bold", color="#003366", pad=8)
             ax1.grid(True)
             ax1_r = ax1.twinx()
             ax1_r.plot(df_h["t_s"], df_h["User Count"], color="#64748B", linestyle="--", linewidth=1.6, label="Usuarios activos")
@@ -374,16 +351,16 @@ def generate_figures(summary: dict[str, Any], finops: dict[str, Any]) -> list[st
     base_cost = rt_monthly[0]
     for bar, val in zip(b3, rt_monthly):
         savings = (1.0 - val / base_cost) * 100.0 if base_cost > 0 else 0.0
-        tag = f"${val:.2f}\n(-{savings:.0f}%)" if savings > 1.0 else f"${val:.2f}\n(Base)"
+        tag = f"${val:.2f}\n({-savings:+.0f}%)" if abs(savings) > 1.0 else f"${val:.2f}\n(Base)"
         ax2.text(bar.get_x() + bar.get_width() / 2, val + 0.6, tag, ha="center", va="bottom", fontsize=8.0, fontweight="bold")
     ax2.set_xticks(x)
     ax2.set_xticklabels(labels, fontsize=8.2)
-    ax2.set_ylabel("Costo Mensual API (USD/mes)", fontsize=9.5, fontweight="bold", color="#0F172A")
+    ax2.set_ylabel("API y presupuesto MLflow (USD/mes)", fontsize=9.5, fontweight="bold", color="#0F172A")
     ax2.set_title("B) Ahorro FinOps Mensual (Escenario Tiempo Real 16.3M)", fontsize=10.5, fontweight="bold", color="#003366", pad=10)
     ax2.set_ylim(0, max(rt_monthly) * 1.28)
     ax2.grid(axis="y")
 
-    fig.suptitle("Análisis FinOps — Costo Unitario y Optimización de Despliegue en Nube (MiBici AMG)", fontsize=12, fontweight="bold", color="#003366", y=1.01)
+    fig.suptitle("Análisis FinOps — Proyección de costo con presupuesto MLflow y una réplica por topología", fontsize=12, fontweight="bold", color="#003366", y=1.01)
     fig.tight_layout()
     p4 = FIGURES_DIR / "semana10_finops_costs.png"
     fig.savefig(p4, bbox_inches="tight")
@@ -393,16 +370,23 @@ def generate_figures(summary: dict[str, Any], finops: dict[str, Any]) -> list[st
     return created
 
 
-def run_finops_analysis(summary_path: Path = SEMANA10_DIR / "load_test_summary.json") -> dict[str, Any]:
+def run_finops_analysis(
+    summary_path: Path = SEMANA10_DIR / "load_test_summary.json",
+    mlflow_overhead_usd: float = 36.0401,
+) -> dict[str, Any]:
     """Ejecuta el análisis FinOps completo a partir de los resultados reales de carga."""
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     scenarios = summary["scenarios"]
 
     # Métricas observadas de referencia (usamos carga alta 100u para capacidad sostenida)
-    peak_sc = max(scenarios, key=lambda s: s["rps_aggregated"])
+    if summary.get("overall_status") not in (None, "PASS"):
+        raise ValueError("FinOps requiere una corrida de carga aprobada")
+    if any(s.get("failure_count", 0) or s.get("status") == "FAIL" for s in scenarios):
+        raise ValueError("La corrida contiene fallos")
+    peak_sc = max(scenarios, key=lambda s: s["rps_predict"])
     mid_sc = scenarios[1] if len(scenarios) > 1 else peak_sc
 
-    sustained_rps = float(peak_sc["rps_aggregated"])
+    sustained_rps = float(peak_sc["rps_predict"])
     avg_latency_ms = float(mid_sc["latency_avg_ms"])
     peak_api_cpu = max(s["api_resources"]["cpu_max_perc"] for s in scenarios)
     peak_api_mem_mib = max(s["api_resources"]["mem_max_mib"] for s in scenarios)
@@ -420,6 +404,7 @@ def run_finops_analysis(summary_path: Path = SEMANA10_DIR / "load_test_summary.j
                 monthly_inferences=n_inf,
                 avg_latency_ms=avg_latency_ms,
                 sustained_rps=sustained_rps,
+                mlflow_overhead_usd=mlflow_overhead_usd,
             )
             for p in CLOUD_PROFILES
         ]
@@ -431,7 +416,7 @@ def run_finops_analysis(summary_path: Path = SEMANA10_DIR / "load_test_summary.j
 
     baseline_rt = workloads["realtime_1min"]["profiles"][0]
     best_always_on = workloads["realtime_1min"]["profiles"][2]  # Fargate ARM 19h/día
-    best_serverless = workloads["realtime_1min"]["profiles"][4]  # Cloud Run
+    best_serverless = workloads["realtime_1min"]["profiles"][-1]  # Cloud Run
 
     finops = {
         "observed_telemetry": {
@@ -440,7 +425,22 @@ def run_finops_analysis(summary_path: Path = SEMANA10_DIR / "load_test_summary.j
             "peak_api_cpu_perc": peak_api_cpu,
             "peak_api_mem_mib": peak_api_mem_mib,
             "peak_mlflow_mem_mib": peak_mlflow_mem_mib,
-            "theoretical_max_inferences_month_1replica": int(sustained_rps * 3600.0 * HOURS_PER_MONTH),
+            "extrapolated_inferences_month_730h": int(sustained_rps * 3600.0 * HOURS_PER_MONTH),
+            "rps_total_peak": float(peak_sc["rps_aggregated"]),
+            "capacity_scope": "observed_mixed_workload_not_maximum_capacity",
+            "historical_model_provenance": summary.get("model_before") or "not_recorded",
+        },
+        "assumptions": {
+            "pricing_reference_date": "2026-11-22",
+            "sources": ["https://aws.amazon.com/fargate/pricing/", "https://cloud.google.com/run/pricing"],
+            "hours_per_month": HOURS_PER_MONTH,
+            "operating_hours_per_month": ACTIVE_HOURS_PER_MONTH,
+            "mlflow_monthly_usd": mlflow_overhead_usd,
+            "mlflow_budget_basis": "Una tarea x86 1 vCPU 2 GiB, 730 h; presupuesto de referencia",
+            "cloudrun_scope": "Peticiones aisladas con redondeo a 100 ms; sin nivel gratuito, solapamiento ni cold starts",
+            "excluded_costs": ["storage", "logs", "network", "load_balancer", "IPv4", "taxes", "training"],
+            "profile_capacity": "Una réplica supuesta; validar cada topología con carga antes de desplegar",
+            "ec2_savings_price": "Omitido: falta cotización verificable por plazo y modalidad de pago",
         },
         "workloads": workloads,
         "key_findings": {
@@ -450,11 +450,11 @@ def run_finops_analysis(summary_path: Path = SEMANA10_DIR / "load_test_summary.j
             "optimized_scheduled_arm_savings_pct": round(
                 (1.0 - best_always_on["total_monthly_usd"] / baseline_rt["total_monthly_usd"]) * 100.0, 1
             ),
-            "serverless_std_monthly_usd": workloads["standard_5min"]["profiles"][4]["total_monthly_usd"],
+            "serverless_std_monthly_usd": workloads["standard_5min"]["profiles"][-1]["total_monthly_usd"],
             "serverless_std_savings_pct": round(
                 (
                     1.0
-                    - workloads["standard_5min"]["profiles"][4]["total_monthly_usd"]
+                    - workloads["standard_5min"]["profiles"][-1]["total_monthly_usd"]
                     / workloads["standard_5min"]["profiles"][0]["total_monthly_usd"]
                 )
                 * 100.0,
@@ -475,4 +475,8 @@ def run_finops_analysis(summary_path: Path = SEMANA10_DIR / "load_test_summary.j
 
 
 if __name__ == "__main__":
-    run_finops_analysis()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--summary", type=Path, default=SEMANA10_DIR / "load_test_summary.json")
+    parser.add_argument("--mlflow-monthly-usd", type=float, default=36.0401)
+    args = parser.parse_args()
+    run_finops_analysis(args.summary, args.mlflow_monthly_usd)

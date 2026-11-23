@@ -638,84 +638,76 @@ make stop_container CONTAINER_ENGINE=podman
 
 ---
 
-## ⚙️ 9. Orquestación, CI/CD, Pruebas de Carga y FinOps (Semana 10)
+## ⚙️ 9. Orquestación, CI/CD, Pruebas de Carga y FinOps
 
-Esta sección documenta la consolidación operativa del sistema (Entregable 7 / Actividad 9): orquestación reproducible con Docker Compose, pipeline automatizado en GitHub Actions, evaluación bajo carga con Locust, monitoreo de contenedores (`docker stats`) y análisis FinOps de costo por inferencia.
-
-### 9.1 Orquestación Completa con Docker Compose (`docker-compose.yml`)
-
-El archivo [`docker-compose.yml`](docker-compose.yml) levanta en conjunto `mlflow` y `api` sobre una red dedicada (`mibici_net`), volumen persistente (`mlflow_data`), comprobaciones `healthcheck` en ambos contenedores y límites de CPU/memoria parametrizables mediante [`.env.example`](.env.example):
+`docker-compose.yml` configura API y MLflow con red, volumen, límites de recursos y health checks. En un volumen vacío, iniciar MLflow y registrar el modelo real de P2 siguiendo la sección 8.0. Después, el arranque habitual es:
 
 ```bash
-# 1. Copiar variables opcionales (puertos y límites de CPU/RAM)
-cp .env.example .env
-
-# 2. (Primera vez con volumen vacío) Levantar MLflow y registrar el modelo @champion
-docker compose up -d --build mlflow
-# Opción producción (ver sección 5): entrenar/registrar p2_train + p2_register
-# Opción rápida de validación/CI (sembrar modelo LightGBM firmado):
-MLFLOW_CID=$(docker compose ps -q mlflow)
-docker cp scripts/seed_ci_model.py "${MLFLOW_CID}:/tmp/seed_ci_model.py"
-docker exec "${MLFLOW_CID}" python /tmp/seed_ci_model.py --tracking-uri http://127.0.0.1:5000
-
-# 3. Arrancar todo el stack con un solo comando y validar salud
-make compose_up        # equivale a: docker compose up -d --build
+docker compose up -d --build
 docker compose ps
-docker stats --no-stream
-
-# 4. Detener servicios preservando el volumen del Model Registry
-make compose_down      # equivale a: docker compose down
+curl http://127.0.0.1:8000/model-info
 ```
 
-### 9.2 Pipeline de CI/CD con GitHub Actions (`.github/workflows/ci-cd.yml`)
+La API resuelve `champion` una sola vez y carga una versión fija. `/model-info` identifica esa versión, su `run_id`, origen y fecha de carga; reasignar el alias exige reiniciar la API. El modelo sintético de `seed_ci_model.py` sirve para CI, no acredita desempeño del modelo real.
 
-El flujo [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) se ejecuta automáticamente en cada `push` y `pull_request` hacia `main` (así como bajo demanda con `workflow_dispatch`):
+### 9.1 CI/CD y alcance de la evidencia
 
-1. **`test-suite` (matriz paralela):** Ejecuta `api-and-ops` (API, verificador, A/B testing, Compose, Locust y FinOps) y `pipelines-and-validation` (ingesta, features, P1/P2/P3, DeepChecks, Evidently y reproducibilidad) en Python 3.12 con caché `pip` y artefactos JUnit.
-2. **`build-and-validate-compose`:** Valida `docker compose config`, construye la imagen OCI con Docker Buildx y caché de capas GHA (`type=gha`), levanta `mlflow` + `api` con `docker compose`, ejecuta las 10 comprobaciones HTTP/contenedor de `scripts/verify_container_api.py`, corre una prueba de humo con Locust y publica `docker stats` en `$GITHUB_STEP_SUMMARY`.
-3. **`publish-image`:** En merges a `main`, construye y publica automáticamente la imagen en GitHub Container Registry (`ghcr.io/<owner>/tc5061-proyecto-equipo30/mibici-risk-api:latest`).
+`.github/workflows/ci-cd.yml` automatiza pruebas, construcción, validación con Compose y humo de Locust, y publica en GHCR al hacer push a `main`. La [corrida histórica #9](https://github.com/Diegob059/TC5061-Proyecto-Equipo30/actions/runs/45089840741) pasó sobre `8b4e49f`. Ese resultado corresponde al código histórico; las modificaciones posteriores requieren su propio CI. Publicar la imagen en GHCR no despliega el servicio a una nube.
 
-### 9.3 Pruebas de Carga con Locust y Monitoreo (`docker stats`)
-
-El escenario [`load_tests/locustfile.py`](load_tests/locustfile.py) simula peticiones concurrentes del Centro de Control Operativo (CCO) sobre perfiles realistas del AMG (35% pico desabasto, 35% pico saturación, 30% valle normal). Para correr la batería completa escalonada (10, 50 y 100 usuarios) con telemetría simultánea de `docker stats`:
+### 9.2 Carga y telemetría con errores visibles
 
 ```bash
-# Ejecución automatizada escalonada + docker stats (guarda CSV/HTML/JSON en reports/semana10/)
 make load_test API_BASE_URL=http://127.0.0.1:8000
-
-# O modo interactivo con UI web de Locust en http://localhost:8089
-locust -f load_tests/locustfile.py --host http://127.0.0.1:8000
+# Para conservar las mediciones históricas y guardar una nueva corrida:
+python -m scripts.run_load_and_monitor --host http://127.0.0.1:8000 \
+  --output-dir reports/semana10/runs/nueva_corrida
 ```
 
-| Escenario | Peticiones | RPS Total | Lat. Media (ms) | p50 (ms) | p95 (ms) | p99 (ms) | Error % | API CPU Med/Pico | API RAM Pico |
-| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | ---: |
-| Carga Baja (10 usuarios, 30s) | 914 | 31.5 | 8.1 | 7 | 17 | 24 | 0.00% | 15.9% / 24.0% | 171.6 MiB |
-| Carga Media (50 usuarios, 45s) | 6,873 | 156.0 | 6.8 | 5 | 17 | 38 | 0.00% | 40.1% / 50.5% | 170.9 MiB |
-| Carga Alta / Estrés (100 usuarios, 45s) | 13,555 | 307.5 | 13.5 | 9 | 42 | 73 | 0.00% | 70.3% / 79.6% | 173.1 MiB |
+El ejecutor exige versión y `run_id` antes de medir y conserva la identidad al inicio y al final, los IDs e imágenes de contenedor, los fallos de Locust y los errores de monitoreo. Rechaza el modelo sintético de CI salvo `--allow-synthetic`, que identifica explícitamente el alcance como infraestructura. Devuelve **0** al aprobar, **1** por errores de carga/telemetría y **2** por prerrequisitos inválidos. Una muestra ausente se guarda como `null`, nunca como consumo cero. Cada escenario genera sus CSV en un directorio temporal nuevo para evitar leer resultados anteriores.
 
-![Desempeño de pruebas de carga con Locust](reports/figures/semana10_locust_performance.png)
-![Monitoreo de recursos con docker stats](reports/figures/semana10_docker_stats.png)
+| Usuarios | Duración | RPS total | Predicciones/s | p95 predicción ms | CPU API pico | RAM API pico |
+|---|---|---:|---:|---:|---:|---:|
+| 10 | 30 s | 31.48 | 26.35 | 17 | 23.98% | 171.6 MiB |
+| 50 | 45 s | 155.99 | 131.28 | 17 | 50.48% | 170.9 MiB |
+| 100 | 45 s | 307.51 | 256.44 | 42 | 79.60% | 173.1 MiB |
 
-### 9.4 Análisis FinOps: Costo por Inferencia y Reporte Oficial
+Son mediciones históricas: 21,342 solicitudes totales, 17,853 de predicción y cero errores registrados. Los payloads son sintéticos. Los archivos no identifican la versión exacta del modelo ni el hardware; no se les atribuye retrospectivamente una identidad. El monitoreo guardó 10/15/15 muestras por contenedor, aproximadamente cada 3 s. Los ensayos breves con pausas no determinan capacidad máxima ni ausencia de fugas a largo plazo.
 
-Para recalcular el análisis de costos, regenerar las 4 figuras y compilar el reporte oficial (DOCX, MD y PDF de 5 cuartillas en Arial 11, interlineado 1.15):
+### 9.3 FinOps con alcance y supuestos explícitos
 
 ```bash
 make finops
-make report_week10
+# Cambiar el presupuesto mensual supuesto de MLflow o seleccionar otra corrida:
+python -m scripts.finops_analysis --mlflow-monthly-usd 36.0401 \
+  --summary reports/semana10/load_test_summary.json
 ```
 
-| Topología de Nube (us-east-1 / us-central1) | USD/mes (16.3M inf) | USD/1M inf (16.3M) | USD/1M inf (3.26M) | Ahorro vs. Base |
-| :--- | ---: | ---: | ---: | :---: |
-| AWS ECS Fargate x86_64 (1 vCPU / 2 GB, 24/7 Base) | $36.04 | $2.21 | $11.06 | Base |
-| AWS ECS Fargate ARM64 Graviton (0.5 vCPU / 1 GB, Right-sized) | $14.42 | $0.89 | $4.43 | -60.0% |
-| AWS ECS Fargate ARM64 (0.5 vCPU / 1 GB, 19h/día operativo) | $11.41 | $0.70 | $3.50 | -68.3% |
-| AWS EC2 `c7g.medium` ARM64 (1-yr Savings Plan) | $16.64 | $1.02 | $5.11 | -53.8% |
-| GCP Cloud Run Serverless (1 vCPU / 512 MB, Scale-to-Zero) | $12.68 | $0.78 | $0.78 | -64.8% (-93.0% en 5-min) |
+Se usan `rps_predict` para extrapolar inferencias y 470 estaciones, 19 h/día y 30.4 días/mes como supuestos de demanda. El presupuesto base de MLflow es **36.0401 USD/mes**, equivalente a otra tarea Fargate x86 de 1 vCPU y 2 GiB durante 730 h. Se suma al costo de la API; no representa una factura observada. Las topologías suponen una réplica y requieren benchmark propio de capacidad. Se excluyen almacenamiento, red, IPv4, balanceador, logs, entrenamiento e impuestos.
 
-![Análisis FinOps de costo por inferencia](reports/figures/semana10_finops_costs.png)
+| API para 16.29M inferencias/mes | API USD/mes | API + presupuesto MLflow USD/mes | USD/1M con MLflow |
+|---|---:|---:|---:|
+| Fargate x86 1 vCPU 2 GiB 24 h | 36.04 | 72.08 | 4.43 |
+| Fargate ARM 0.5 vCPU 1 GiB 24 h | 14.42 | 50.46 | 3.10 |
+| Fargate ARM 0.5 vCPU 1 GiB 19 h | 11.41 | 47.45 | 2.91 |
+| Cloud Run 1 vCPU 0.5 GiB escenario serial | 47.64 | 83.68 | 5.14 |
 
-El reporte oficial de la Semana 10 se conserva en [PDF](docs/TC5061_Operacion_FinOps_Equipo30.pdf), [Word](docs/TC5061_Operacion_FinOps_Equipo30.docx) y [Markdown](docs/TC5061_Operacion_FinOps_Equipo30.md), con toda la telemetría cruda y auditoría en `reports/semana10/`.
+Cloud Run se modela sin solicitudes solapadas y con redondeo de 100 ms por periodo aislado, sin nivel gratuito ni arranques en frío. No se aplica esa fórmula por petición a tráfico con concurrencia compartida. El costo depende del patrón real; el ahorro previo de 93% queda retirado. EC2 Savings Plans se omite por falta de una cotización verificable por plazo y modalidad de pago.
+
+Fuentes y supuestos: [AWS Fargate](https://aws.amazon.com/fargate/pricing/), [Cloud Run](https://cloud.google.com/run/pricing) y `reports/semana10/finops_summary.json`. Consulta de referencia: 22 de noviembre de 2026. El ahorro estimado de la API ARM programada es 68.3%; incluyendo el presupuesto común de MLflow es aproximadamente 34.2%. El menor consumo de RAM motiva probar una asignación menor, sin certificar desempeño equivalente al reducir CPU o cambiar de arquitectura.
+
+### 9.4 Reporte y regresiones
+
+```bash
+python -m pytest tests/test_api.py tests/test_api_verifier.py \
+  tests/test_operacion_finops.py tests/test_ops_regressions.py -q
+make report_week10
+# DOCX y Markdown sin conversión a PDF:
+python scripts/generate_week10_report.py --skip-pdf
+```
+
+El generador conserva la portada institucional del Equipo 30, escudo e integrantes, produce cinco páginas con tipografía equivalente a Arial 11 e interlineado 1.15 y lee las cifras desde JSON. Para exportar PDF utiliza LibreOffice (`soffice` en PATH o variable `SOFFICE_BIN`).
+
+Reporte corregido: [PDF](docs/TC5061_Operacion_FinOps_Equipo30.pdf), [Word](docs/TC5061_Operacion_FinOps_Equipo30.docx) y [Markdown](docs/TC5061_Operacion_FinOps_Equipo30.md). La evidencia de pruebas locales se conserva en `reports/semana10/revision_pytest.xml`; no equivale a una nueva corrida de carga ni al CI de esta rama.
 
 ---
 
